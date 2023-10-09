@@ -1,0 +1,24 @@
+Snakemake executor plugin: {{ plugin_name }}
+###########################################
+
+{{ desc }}
+
+Installation
+------------
+
+Install this plugin by installing it with pip or mamba, e.g.::
+
+    pip install snakemake-executor-plugin-{{ plugin_name }}
+
+Usage
+-----
+
+In order to use the plugin, run Snakemake (>=8.0) with the corresponding value for the executor flag::
+
+    snakemake --executor {{ plugin_name }} ...
+
+with ``...`` being any additional arguments you want to use. In particular,
+consider all the special arguments that are available for the executor.
+They all start with ``--{{ plugin_name }}-`` and can be found by invoking::
+
+    snakemake --help | grep {{ plugin_name }}

@@ -1,0 +1,43 @@
+Snakemake storage plugin: {{ plugin_name }}
+###########################################
+
+{{ desc }}
+
+Installation
+------------
+
+Install this plugin by installing it with pip or mamba, e.g.::
+
+    pip install snakemake-storage-plugin-{{ plugin_name }}
+
+Usage
+-----
+
+Inside of your workflow you can then use it like this::
+
+    # register storage provider (not needed if no custom settings are to be defined here)
+    storage:
+        provider="{{ plugin_name }}",
+        # add custom settings here if needed
+        # alternatively they can be passed via command line arguments
+        # starting with --storage-{{ plugin_name }}-..., see
+        # snakemake --help
+        ...
+
+    rule example:
+        input:
+            storage.{{ plugin_name }}(
+                # define query to the storage backend here
+                ...
+            ),
+        output:
+            "example.txt"
+        shell:
+            "..."
+
+Alternatively the storage plugin can be used as a default provider via::
+
+    snakemake --default-storage-provider {{ plugin_name }} --default-storage-prefix ...
+
+with ``...`` being the prefix of a query under which you want to store all your 
+results.
