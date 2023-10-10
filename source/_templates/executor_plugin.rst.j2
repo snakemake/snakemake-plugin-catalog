@@ -18,7 +18,14 @@ In order to use the plugin, run Snakemake (>=8.0) with the corresponding value f
     snakemake --executor {{ plugin_name }} ...
 
 with ``...`` being any additional arguments you want to use. In particular,
-consider all the special arguments that are available for the executor.
-They all start with ``--{{ plugin_name }}-`` and can be found by invoking::
+consider all the special arguments that are available for the executor:
 
-    snakemake --help | grep {{ plugin_name }}
+.. list-table:: Settings
+   :header-rows: 1
+
+   * - CLI argument
+     - Description
+{% for setting in settings -%}
+   * - {{ setting["cliarg"] }} {{ setting.get("metavar", "VALUE") }}
+     - {{ setting["desc"] }} {% if setting["default"] %} (default: {{ setting["default"] }}){% endif %} {% if setting["choices"] %} (choices: {{ setting["choices"] }}){% endif %} {% if setting["required"] %} (required){% endif %} {% if setting["type"] %} (type: {{ setting["type"] }}){% endif %}
+{% endfor -%}
