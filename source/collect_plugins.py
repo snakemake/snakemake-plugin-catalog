@@ -24,7 +24,6 @@ def pypi_api(query, accept="application/json"):
 
 
 class MetadataCollector:
-
     def __init__(self, package: str, plugin_type: str):
         self.envname = uuid.uuid4().hex
         self.package = package
@@ -42,7 +41,7 @@ class MetadataCollector:
             check=True,
         )
         return self
-    
+
     def __exit__(self, exc_type, exc_value, traceback):
         subprocess.run(
             f"micromamba env remove -n {self.envname} -y", check=True, shell=True
@@ -60,9 +59,10 @@ class MetadataCollector:
         return res.stdout.decode()
 
     def get_settings(self) -> List[Dict[str, Any]]:
-        info = self._extract_info("import json; print(json.dumps(plugin.get_settings_info()))")
+        info = self._extract_info(
+            "import json; print(json.dumps(plugin.get_settings_info()))"
+        )
         return json.loads(info)
-            
 
 
 def collect_plugins():
