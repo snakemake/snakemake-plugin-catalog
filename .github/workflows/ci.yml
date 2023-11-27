@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+
+defaults:
+  run:
+    shell: bash -leo pipefail {0} {0}
+
+jobs:
+  formatting:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v3
+      
+      - uses: mamba-org/setup-micromamba@v1
+        with:
+          environment-file: environment.yml
+          init-shell: >-
+            bash
+          cache-environment: true
+          post-cleanup: 'all'
+
+      - name: Formatting
+        run: black --check .
+
+  testing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: mamba-org/setup-micromamba@v1
+        with:
+          environment-file: environment.yml
+          init-shell: >-
+            bash
+          cache-environment: true
+          post-cleanup: 'all'
+
+      - name: Building
+        run: make html

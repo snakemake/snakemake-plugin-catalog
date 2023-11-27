@@ -1,0 +1,40 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+defaults:
+  run:
+    shell: bash -leo pipefail {0} {0}
+
+jobs:
+  deploy:
+    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
+    permissions:
+        pages: write      # to deploy to Pages
+        id-token: write   # to verify the deployment originates from an appropriate source
+
+    # Specify runner + deployment step
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v3
+
+        - uses: mamba-org/setup-micromamba@v1
+          with:
+            environment-file: environment.yml
+            init-shell: >-
+              bash
+            cache-environment: true
+            post-cleanup: 'all'
+
+        - name: Building
+          run: make html
+
+        - name: Setup Pages
+          uses: actions/configure-pages@v3
+
+        - name: Upload artifact
+          uses: actions/upload-pages-artifact@v1
+          with:
+            path: "build/html"

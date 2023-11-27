@@ -70,10 +70,11 @@ class MetadataCollector:
 
 
 def collect_plugins():
-
     templates = Environment(
-        loader=FileSystemLoader("_templates"), autoescape=select_autoescape(),
-        trim_blocks=True, lstrip_blocks=True
+        loader=FileSystemLoader("_templates"),
+        autoescape=select_autoescape(),
+        trim_blocks=True,
+        lstrip_blocks=True,
     )
 
     data = pypi_api(

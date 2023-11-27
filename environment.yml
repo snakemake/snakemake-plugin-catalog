@@ -1,0 +1,8 @@
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - sphinx
+  - sphinx-rtd-theme
+  - python =3.11
+  - black
