@@ -9,7 +9,6 @@ Snakemake plugin catalog
 This catalog collects information about and documentation of all Snakemake plugins
 published on `PyPI <https://pypi.org/>`_.
 
-
 .. toctree::
    :hidden:
    :caption: executor plugins
@@ -17,12 +16,15 @@ published on `PyPI <https://pypi.org/>`_.
    cluster-generic <plugins/executor/cluster-generic>
    cluster-sync <plugins/executor/cluster-sync>
    drmaa <plugins/executor/drmaa>
+   kubernetes <plugins/executor/kubernetes>
+   slurm <plugins/executor/slurm>
    slurm-jobstep <plugins/executor/slurm-jobstep>
-   
+   tes <plugins/executor/tes>
 .. toctree::
    :hidden:
    :caption: storage plugins
 
+   fs <plugins/storage/fs>
    http <plugins/storage/http>
    s3 <plugins/storage/s3>
-   
+   sftp <plugins/storage/sftp>

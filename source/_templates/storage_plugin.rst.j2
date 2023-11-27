@@ -41,3 +41,26 @@ Alternatively the storage plugin can be used as a default provider via::
 
 with ``...`` being the prefix of a query under which you want to store all your 
 results.
+
+{% if settings %}
+The storage plugin has the following command line settings:
+
+.. list-table:: Settings
+   :header-rows: 1
+
+   * - CLI argument
+     - Description
+     - Default
+     - Choices
+     - Required
+     - Type
+{% for setting in settings %}
+   * - ``{{ setting["cliarg"] }} {{ get_setting_meta(setting, "metavar", default="VALUE") }}``
+     - {{ get_setting_meta(setting, "desc") }}
+     - {{ get_setting_meta(setting, "default", verb=True) }}
+     - {{ get_setting_meta(setting, "choices") }}
+     - {{ get_setting_meta(setting, "required") }}
+     - {{ get_setting_meta(setting, "type") }}
+{% endfor %}
+
+{% endif %}
