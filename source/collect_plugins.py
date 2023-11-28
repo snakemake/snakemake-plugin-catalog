@@ -85,7 +85,8 @@ def collect_plugins():
 
     for plugin_type in ("executor", "storage"):
         plugin_dir = Path("plugins") / plugin_type
-        shutil.rmtree(plugin_dir)
+        if plugin_dir.exists():
+            shutil.rmtree(plugin_dir)
         plugin_dir.mkdir(parents=True, exist_ok=True)
         prefix = f"snakemake-{plugin_type}-plugin-"
         packages = [
