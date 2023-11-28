@@ -1,3 +1,4 @@
+name: snakemake-plugin-catalog-dev
 channels:
   - conda-forge
   - nodefaults
