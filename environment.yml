@@ -7,3 +7,4 @@ dependencies:
   - sphinx-rtd-theme
   - python =3.11
   - black
+  - ratelimit
