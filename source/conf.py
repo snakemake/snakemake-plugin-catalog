@@ -7,7 +7,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "Snakemake plugin catalog"
-copyright = "2023, Johannes Köster"
+copyright = "2023, The Snakemake team"
 author = "Johannes Köster"
 
 import sys
