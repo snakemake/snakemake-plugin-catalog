@@ -8,3 +8,4 @@ dependencies:
   - python =3.11
   - black
   - ratelimit
+  - m2r2

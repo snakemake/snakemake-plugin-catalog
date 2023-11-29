@@ -1,3 +1,5 @@
+{% set settings_label = plugin_name + "_settings" %}
+
 Snakemake storage plugin: {{ plugin_name }}
 ###########################################
 
@@ -13,16 +15,45 @@ Install this plugin by installing it with pip or mamba, e.g.::
 Usage
 -----
 
-Inside of your workflow you can then use it like this::
+As default provider
+^^^^^^^^^^^^^^^^^^^
+If you want all your input and output (which is not explicitly marked to come from 
+another storage) to be written to and read from this storage, you can use it as a 
+default provider via::
+
+    snakemake --default-storage-provider {{ plugin_name }} --default-storage-prefix ...
+
+with ``...`` being the prefix of a query under which you want to store all your 
+results.
+{% if settings %}
+You can also pass custom settings via command line arguments::
+
+    snakemake --default-storage-provider {{ plugin_name }} --default-storage-prefix ... \
+        {% for setting in settings %}
+        {{ setting["cliarg"] }} ... {% if not loop.last %}\{% endif %}
+        {% endfor %}
+
+{% endif %}
+
+Within the workflow
+^^^^^^^^^^^^^^^^^^^
+
+If you want to use this storage plugin only for specific items, you can register it
+inside of your workflow::
 
     # register storage provider (not needed if no custom settings are to be defined here)
     storage:
         provider="{{ plugin_name }}",
-        # add custom settings here if needed
+        {% if settings %}
+        # optionally add custom settings here if needed
         # alternatively they can be passed via command line arguments
         # starting with --storage-{{ plugin_name }}-..., see
         # snakemake --help
-        ...
+        {% for setting in settings %}
+        # {{ setting["help"] }}
+        {{ setting["name"] }}=...,
+        {% endfor %}
+        {% endif %}
 
     rule example:
         input:
@@ -35,20 +66,61 @@ Inside of your workflow you can then use it like this::
         shell:
             "..."
 
-Alternatively the storage plugin can be used as a default provider via::
-
-    snakemake --default-storage-provider {{ plugin_name }} --default-storage-prefix ...
-
-with ``...`` being the prefix of a query under which you want to store all your 
-results.
-
 {% if settings %}
-The storage plugin has the following command line settings:
+Using multiple entities of the same storage plugin
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In case you have to use this storage plugin multiple times, but with different settings
+(e.g. to connect to different storage servers), you can register it multiple times,
+each time providing a different tag::
+
+    # register shared settings
+    storage:
+        provider="{{ plugin_name }}",
+        # optionally add custom settings here if needed
+        # alternatively they can be passed via command line arguments
+        # starting with --storage-{{ plugin_name }}-..., see below
+        {% for setting in settings %}
+        # {{ setting["help"] }}
+        {{ setting["name"] }}=...,
+        {% endfor %}
+
+    # register multiple tagged entities
+    storage foo:
+        provider="{{ plugin_name }}",
+        # optionally add custom settings here if needed
+        # alternatively they can be passed via command line arguments
+        # starting with --storage-{{ plugin_name }}-..., see below.
+        # To only pass a setting to this tagged entity, prefix the given value with
+        # the tag name, i.e. foo:{{ settings[0]["name"] }}=...
+        {% for setting in settings %}
+        # {{ setting["help"] }}
+        {{ setting["name"] }}=...,
+        {% endfor %}
+
+    rule example:
+        input:
+            storage.foo(
+                # define query to the storage backend here
+                ...
+            ),
+        output:
+            "example.txt"
+        shell:
+            "..."
+
+.. _{{ settings_label }}:
+
+Settings
+^^^^^^^^
+
+The storage plugin has the following settings:
 
 .. list-table:: Settings
    :header-rows: 1
 
-   * - CLI argument
+   * - CLI setting
+     - Workflow seting
      - Description
      - Default
      - Choices
@@ -56,11 +128,12 @@ The storage plugin has the following command line settings:
      - Type
 {% for setting in settings %}
    * - ``{{ setting["cliarg"] }} {{ get_setting_meta(setting, "metavar", default="VALUE") }}``
-     - {{ get_setting_meta(setting, "desc") }}
+     - ``{{ setting["name"] }}``
+     - {{ get_setting_meta(setting, "help") }}
      - {{ get_setting_meta(setting, "default", verb=True) }}
      - {{ get_setting_meta(setting, "choices") }}
      - {{ get_setting_meta(setting, "required") }}
-     - {{ get_setting_meta(setting, "type") }}
+     - {{ get_setting_meta(setting, "type", default="str") }}
 {% endfor %}
 
 {% endif %}

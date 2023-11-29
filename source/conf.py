@@ -29,6 +29,13 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "lutra"
 html_static_path = ["_static"]
-html_css_files = ["theme.css"]
+# html_css_files = ["theme.css"]
+html_theme_options = {
+    "primary_color": "emerald",
+    "secondary_color": "emerald",
+    "dark_logo": "logo-snake.svg",
+    "light_logo": "logo-snake.svg",
+}
+html_title = "Snakemake plugin catalog"

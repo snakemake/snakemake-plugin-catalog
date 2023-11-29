@@ -20,7 +20,7 @@ In order to use the plugin, run Snakemake (>=8.0) with the corresponding value f
 with ``...`` being any additional arguments you want to use.
 
 {% if settings %}
-In particular, consider the special arguments that are available for the executor:
+The executor plugin has the following settings:
 
 .. list-table:: Settings
    :header-rows: 1
@@ -33,7 +33,7 @@ In particular, consider the special arguments that are available for the executo
      - Type
 {% for setting in settings %}
    * - ``{{ setting["cliarg"] }} {{ get_setting_meta(setting, "metavar", default="VALUE") }}``
-     - {{ get_setting_meta(setting, "desc") }}
+     - {{ get_setting_meta(setting, "help") }}
      - {{ get_setting_meta(setting, "default", verb=True) }}
      - {{ get_setting_meta(setting, "choices") }}
      - {{ get_setting_meta(setting, "required") }}

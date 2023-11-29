@@ -11,20 +11,7 @@ published on `PyPI <https://pypi.org/>`_.
 
 .. toctree::
    :hidden:
-   :caption: executor plugins
-
-   cluster-generic <plugins/executor/cluster-generic>
-   cluster-sync <plugins/executor/cluster-sync>
-   drmaa <plugins/executor/drmaa>
-   kubernetes <plugins/executor/kubernetes>
-   slurm <plugins/executor/slurm>
-   slurm-jobstep <plugins/executor/slurm-jobstep>
-   tes <plugins/executor/tes>
-.. toctree::
-   :hidden:
    :caption: storage plugins
 
    fs <plugins/storage/fs>
-   http <plugins/storage/http>
    s3 <plugins/storage/s3>
-   sftp <plugins/storage/sftp>

@@ -9,6 +9,7 @@ import uuid
 import requests
 from ratelimit import limits, sleep_and_retry
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+import m2r2
 
 
 @sleep_and_retry
@@ -95,9 +96,15 @@ def collect_plugins():
             if project["name"].startswith(prefix)
         ]
         for package in packages:
+            # if package != "snakemake-storage-plugin-s3" and package != "snakemake-storage-plugin-fs":
+            #     continue
             meta = pypi_api(f"https://pypi.org/pypi/{package}/json")
             plugin_name = package.removeprefix(prefix)
             desc = "\n".join(meta["info"]["description"].split("\n")[2:])
+
+            # convert to rst
+            desc = m2r2.convert(desc)
+
             with MetadataCollector(package, plugin_type) as collector:
                 settings = collector.get_settings()
 
