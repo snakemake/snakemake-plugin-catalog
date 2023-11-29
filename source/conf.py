@@ -37,5 +37,9 @@ html_theme_options = {
     "secondary_color": "emerald",
     "dark_logo": "logo-snake.svg",
     "light_logo": "logo-snake.svg",
+    "navigation_style": "plain",
+    "sidebar_links": [
+        {"text": "Snakemake documentation", "alt": "Snakemake documentation", "href": "https://snakemake.readthedocs.io"},
+    ]
 }
 html_title = "Snakemake plugin catalog"
