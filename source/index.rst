@@ -8,6 +8,7 @@ Snakemake plugin catalog
 
 This catalog collects information about and documentation of all Snakemake plugins
 published on `PyPI <https://pypi.org/>`_.
+Note that plugin support will appear in `Snakemake 8 <https://github.com/snakemake/snakemake/issues/2409>`_.
 
 .. toctree::
    :hidden:
