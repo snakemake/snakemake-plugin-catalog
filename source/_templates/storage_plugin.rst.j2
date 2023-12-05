@@ -3,6 +3,19 @@
 Snakemake storage plugin: {{ plugin_name }}
 ###########################################
 
+.. image:: https://img.shields.io/badge/author-{{meta["info"]["author"]|urlencode}}-purple
+   :alt: Static Badge
+   :target: https://pypi.org/project/{{ package_name }}
+
+.. image:: https://img.shields.io/pypi/v/{{ package_name }}
+   :alt: PyPI - Version
+   :target: https://pypi.org/project/{{ package_name }}
+
+.. image:: https://img.shields.io/pypi/l/{{ package_name }}
+   :alt: PyPI - License
+   :target: https://pypi.org/project/{{ package_name }}
+
+
 {{ desc }}
 
 Installation
@@ -15,18 +28,39 @@ Install this plugin by installing it with pip or mamba, e.g.::
 Usage
 -----
 
+Queries
+^^^^^^^
+
+Queries to this storage should have the following format:
+
+.. list-table::
+    :header-rows: 1
+
+    * - Query type
+      - Query
+      - Description
+{% for example in example_queries %}
+    * - {{ example["type"] }}
+      - ``{{ example["query"] }}``
+      - {{ example["desc"] }}
+{% endfor %}
+
 As default provider
 ^^^^^^^^^^^^^^^^^^^
 If you want all your input and output (which is not explicitly marked to come from 
 another storage) to be written to and read from this storage, you can use it as a 
-default provider via::
+default provider via:
+
+.. code-block:: bash
 
     snakemake --default-storage-provider {{ plugin_name }} --default-storage-prefix ...
 
 with ``...`` being the prefix of a query under which you want to store all your 
 results.
 {% if settings %}
-You can also pass custom settings via command line arguments::
+You can also pass custom settings via command line arguments:
+
+.. code-block:: bash
 
     snakemake --default-storage-provider {{ plugin_name }} --default-storage-prefix ... \
         {% for setting in settings %}
@@ -114,13 +148,15 @@ each time providing a different tag::
 Settings
 ^^^^^^^^
 
-The storage plugin has the following settings:
+The storage plugin has the following settings (which can be passed via command line, 
+the workflow or environment variables, if provided in the respective columns):
 
-.. list-table:: Settings
+.. list-table::
    :header-rows: 1
 
    * - CLI setting
-     - Workflow seting
+     - Workflow setting
+     - Envvar setting
      - Description
      - Default
      - Choices
@@ -129,6 +165,7 @@ The storage plugin has the following settings:
 {% for setting in settings %}
    * - ``{{ setting["cliarg"] }} {{ get_setting_meta(setting, "metavar", default="VALUE") }}``
      - ``{{ setting["name"] }}``
+     - ``{{ get_setting_meta(setting, "env_var") }}``
      - {{ get_setting_meta(setting, "help") }}
      - {{ get_setting_meta(setting, "default", verb=True) }}
      - {{ get_setting_meta(setting, "choices") }}

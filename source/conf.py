@@ -39,7 +39,12 @@ html_theme_options = {
     "light_logo": "logo-snake.svg",
     "navigation_style": "plain",
     "sidebar_links": [
-        {"text": "Snakemake documentation", "alt": "Snakemake documentation", "href": "https://snakemake.readthedocs.io"},
-    ]
+        {
+            "text": "Snakemake documentation",
+            "alt": "Snakemake documentation",
+            "href": "https://snakemake.readthedocs.io",
+        },
+    ],
 }
 html_title = "Snakemake plugin catalog"
+html_css_files = ["theme.css"]

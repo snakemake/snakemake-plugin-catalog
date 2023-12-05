@@ -1,4 +1,5 @@
 source/plugins/*/*
+source/index.rst
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -1,4 +1,6 @@
+from abc import ABC, abstractmethod
 from collections import defaultdict
+from dataclasses import dataclass
 import json
 from pathlib import Path
 import shutil
@@ -48,7 +50,7 @@ class MetadataCollector:
             f"micromamba env remove -n {self.envname} -y", check=True, shell=True
         )
 
-    def _extract_info(self, statement: str) -> str:
+    def extract_info(self, statement: str) -> str:
         registry = f"{self.plugin_type.title()}PluginRegistry"
         plugin_name = self.package.removeprefix(f"snakemake-{self.plugin_type}-plugin-")
         res = subprocess.run(
@@ -60,7 +62,7 @@ class MetadataCollector:
         return res.stdout.decode()
 
     def get_settings(self) -> List[Dict[str, Any]]:
-        info = self._extract_info(
+        info = self.extract_info(
             "import json; "
             "fmt_type = lambda thetype: thetype.__name__ if thetype is not None else None; "
             "fmt_setting_item = lambda key, value: (key, fmt_type(value)) if key == 'type' else (key, value); "
@@ -70,21 +72,16 @@ class MetadataCollector:
         return json.loads(info)
 
 
-def collect_plugins():
-    templates = Environment(
-        loader=FileSystemLoader("_templates"),
-        autoescape=select_autoescape(),
-        trim_blocks=True,
-        lstrip_blocks=True,
-    )
+class PluginCollectorBase(ABC):
+    @abstractmethod
+    def plugin_type(self) -> str:
+        raise NotImplementedError()
 
-    data = pypi_api(
-        "https://pypi.org/simple/", accept="application/vnd.pypi.simple.v1+json"
-    )
+    def aux_info(self, metadata_collector) -> Dict[str, Any]:
+        return {}
 
-    plugins = defaultdict(list)
-
-    for plugin_type in ("executor", "storage"):
+    def collect_plugins(self, plugins, data, templates):
+        plugin_type = self.plugin_type()
         plugin_dir = Path("plugins") / plugin_type
         if plugin_dir.exists():
             shutil.rmtree(plugin_dir)
@@ -107,6 +104,7 @@ def collect_plugins():
 
             with MetadataCollector(package, plugin_type) as collector:
                 settings = collector.get_settings()
+                aux_info = self.aux_info(collector)
 
             def get_setting_meta(setting, key, default="", verb=False):
                 value = setting.get(key, default)
@@ -128,10 +126,48 @@ def collect_plugins():
                 plugin_type=plugin_type,
                 settings=settings,
                 get_setting_meta=get_setting_meta,
+                **aux_info,
             )
             with open((plugin_dir / plugin_name).with_suffix(".rst"), "w") as f:
                 f.write(rendered)
             plugins[plugin_type].append(plugin_name)
+
+
+class ExecutorPluginCollector(PluginCollectorBase):
+    def plugin_type(self) -> str:
+        return "executor"
+
+
+class StoragePluginCollector(PluginCollectorBase):
+    def plugin_type(self) -> str:
+        return "storage"
+
+    def aux_info(self, metadata_collector) -> Dict[str, Any]:
+        info = metadata_collector.extract_info(
+            "import json; "
+            "queries = plugin.storage_provider.example_queries(); "
+            "print(json.dumps({'example_queries': ["
+            "{'query': qry.query, 'desc': qry.description, 'type': qry.type.name.lower()} "
+            "for qry in queries]}))"
+        )
+        return json.loads(info)
+
+
+def collect_plugins():
+    templates = Environment(
+        loader=FileSystemLoader("_templates"),
+        autoescape=select_autoescape(),
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+
+    plugins = defaultdict(list)
+    data = pypi_api(
+        "https://pypi.org/simple/", accept="application/vnd.pypi.simple.v1+json"
+    )
+
+    for collector in (ExecutorPluginCollector, StoragePluginCollector):
+        collector().collect_plugins(plugins, data, templates)
 
     with open("index.rst", "w") as f:
         f.write(templates.get_template("index.rst.j2").render(plugins=plugins))
