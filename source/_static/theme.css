@@ -5,3 +5,7 @@
 .image-reference {
     border-bottom: none !important;
 }
+
+table code.literal {
+    white-space: nowrap !important;
+}
