@@ -93,8 +93,11 @@ class PluginCollectorBase(ABC):
             if project["name"].startswith(prefix)
         ]
         for package in packages:
-            # if package != "snakemake-storage-plugin-s3" and package != "snakemake-storage-plugin-fs":
-            #     continue
+            if (
+                package != "snakemake-storage-plugin-s3"
+                and package != "snakemake-storage-plugin-fs"
+            ):
+                continue
             meta = pypi_api(f"https://pypi.org/pypi/{package}/json")
             plugin_name = package.removeprefix(prefix)
             desc = "\n".join(meta["info"]["description"].split("\n")[2:])
@@ -118,11 +121,40 @@ class PluginCollectorBase(ABC):
                     return default
                 return value
 
+            docs_warning = ""
+            project_urls = meta.get("info", dict()).get("project_urls") or dict()
+            repository = project_urls.get("Repository")
+            repository_type = None
+            if repository is None:
+                docs_warning = (
+                    "No repository URL found in Pypi metadata. The plugin should "
+                    "specify a repository URL in its pyproject.toml (key 'repository')."
+                )
+            else:
+                if repository.startswith("https://github.com"):
+                    repository_type = "github"
+                elif repository.startswith("https://gitlab.com"):
+                    repository_type = "gitlab"
+            docs_intro = get_docs(repository, section="intro")
+            docs_further = get_docs(repository, section="further")
+            if repository is not None and docs_intro is None and docs_further is None:
+                docs_warning = (
+                    f"No documentation found in repository {repository}. The plugin should "
+                    "provide a docs/intro.md with some introductory sentences and "
+                    "optionally a docs/further.md file with details beyond the "
+                    "auto-generated usage instractions presented in this catalog."
+                )
+
             rendered = templates.get_template(f"{plugin_type}_plugin.rst.j2").render(
                 plugin_name=plugin_name,
                 package_name=package,
+                repository=repository,
+                repository_type=repository_type,
                 meta=meta,
                 desc=desc,
+                docs_intro=docs_intro,
+                docs_further=docs_further,
+                docs_warning=docs_warning,
                 plugin_type=plugin_type,
                 settings=settings,
                 get_setting_meta=get_setting_meta,
@@ -171,3 +203,29 @@ def collect_plugins():
 
     with open("index.rst", "w") as f:
         f.write(templates.get_template("index.rst.j2").render(plugins=plugins))
+
+
+def get_docs(repository: str, section: str, branches=["main", "master"]):
+    if repository is None:
+        return None
+
+    def retrieve():
+        for branch in branches:
+            if repository.startswith("https://github.com"):
+                docs = requests.get(
+                    f"{repository}/blob/{branch}/docs/{section}.md?raw=true"
+                )
+                if docs.status_code == 200:
+                    return docs.text
+            elif repository.startswith("https://gitlab.com"):
+                docs = requests.get(
+                    f"{repository}/-/raw/{branch}/docs/{section}.md?raw=true"
+                )
+                if docs.status_code == 200:
+                    return docs.text
+
+    retrieved = retrieve()
+    if retrieved is not None:
+        return m2r2.convert(retrieved)
+    else:
+        return None

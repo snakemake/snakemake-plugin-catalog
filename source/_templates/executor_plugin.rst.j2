@@ -1,6 +1,11 @@
 Snakemake executor plugin: {{ plugin_name }}
 ###########################################
 
+{% if repository is not none %}
+.. image:: https://img.shields.io/badge/repository-{{ repository }}-purple
+   :target: https://pypi.org/project/{{ package_name }}
+{% endif %}
+
 .. image:: https://img.shields.io/badge/author-{{meta["info"]["author"]|urlencode}}-purple
    :alt: Static Badge
    :target: https://pypi.org/project/{{ package_name }}
@@ -13,8 +18,12 @@ Snakemake executor plugin: {{ plugin_name }}
    :alt: PyPI - License
    :target: https://pypi.org/project/{{ package_name }}
 
+{% if docs_warning %}
+.. warning::
+    {{ docs_warning }}
+{% endif %}
 
-{{ desc }}
+{{ docs_intro }}
 
 Installation
 ------------
@@ -53,4 +62,11 @@ The executor plugin has the following settings:
      - {{ get_setting_meta(setting, "type") }}
 {% endfor %}
 
+{% endif %}
+
+{% if docs_further is not none %}
+Further details
+---------------
+
+{{ docs_further }}
 {% endif %}

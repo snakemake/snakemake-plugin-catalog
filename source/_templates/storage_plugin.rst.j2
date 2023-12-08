@@ -3,20 +3,31 @@
 Snakemake storage plugin: {{ plugin_name }}
 ###########################################
 
-.. image:: https://img.shields.io/badge/author-{{meta["info"]["author"]|urlencode}}-purple
-   :alt: Static Badge
+{% if repository is not none %}
+.. image:: https://img.shields.io/badge/repository-{{ repository_type }}-blue?color=%23022c22
+   :target: {{ repository }}
+{% else %}
+.. image:: https://img.shields.io/badge/repository-unknown-blue?color=%23022c22
+   :target: #
+{% endif %}
+
+.. image:: https://img.shields.io/badge/author-{{meta["info"]["author"]|urlencode}}-purple?color=%23064e3b
    :target: https://pypi.org/project/{{ package_name }}
 
-.. image:: https://img.shields.io/pypi/v/{{ package_name }}
+.. image:: https://img.shields.io/pypi/v/{{ package_name }}?color=%23047857
    :alt: PyPI - Version
    :target: https://pypi.org/project/{{ package_name }}
 
-.. image:: https://img.shields.io/pypi/l/{{ package_name }}
+.. image:: https://img.shields.io/pypi/l/{{ package_name }}?color=%2310b981
    :alt: PyPI - License
    :target: https://pypi.org/project/{{ package_name }}
 
+{% if docs_warning %}
+.. warning::
+    {{ docs_warning }}
+{% endif %}
 
-{{ desc }}
+{{ docs_intro }}
 
 Installation
 ------------
@@ -173,4 +184,11 @@ the workflow or environment variables, if provided in the respective columns):
      - {{ get_setting_meta(setting, "type", default="str") }}
 {% endfor %}
 
+{% endif %}
+
+{% if docs_further is not none %}
+Further details
+---------------
+
+{{ docs_further }}
 {% endif %}
