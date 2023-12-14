@@ -7,6 +7,7 @@ import shutil
 import subprocess
 from typing import Any, Dict, List
 import uuid
+from pypi_simple import PyPISimple
 
 import requests
 from ratelimit import limits, sleep_and_retry
@@ -80,7 +81,7 @@ class PluginCollectorBase(ABC):
     def aux_info(self, metadata_collector) -> Dict[str, Any]:
         return {}
 
-    def collect_plugins(self, plugins, data, templates):
+    def collect_plugins(self, plugins, packages, templates):
         plugin_type = self.plugin_type()
         plugin_dir = Path("plugins") / plugin_type
         if plugin_dir.exists():
@@ -88,9 +89,9 @@ class PluginCollectorBase(ABC):
         plugin_dir.mkdir(parents=True, exist_ok=True)
         prefix = f"snakemake-{plugin_type}-plugin-"
         packages = [
-            project["name"]
-            for project in data["projects"]
-            if project["name"].startswith(prefix)
+            package
+            for package in packages
+            if package.startswith(prefix)
         ]
         for package in packages:
             # if (
@@ -194,12 +195,12 @@ def collect_plugins():
     )
 
     plugins = defaultdict(list)
-    data = pypi_api(
-        "https://pypi.org/simple/", accept="application/vnd.pypi.simple.v1+json"
-    )
 
-    for collector in (ExecutorPluginCollector, StoragePluginCollector):
-        collector().collect_plugins(plugins, data, templates)
+    with PyPISimple() as pypi_client:
+        packages = pypi_client.get_index_page().projects
+
+    for collector in (StoragePluginCollector, ExecutorPluginCollector):
+        collector().collect_plugins(plugins, packages, templates)
 
     with open("index.rst", "w") as f:
         f.write(templates.get_template("index.rst.j2").render(plugins=plugins))
