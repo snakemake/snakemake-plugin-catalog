@@ -35,8 +35,10 @@ jobs:
             cache-environment: true
             post-cleanup: 'all'
 
-        - name: Deploy lutra
-          run: pip install git+http://github.com/pradyunsg/lutra@8f61563
+        - name: Deploy additional packages
+          run: |
+            pip install git+http://github.com/pradyunsg/lutra@8f61563
+            pip install pypi_simple
 
         - name: Building
           run: make html
