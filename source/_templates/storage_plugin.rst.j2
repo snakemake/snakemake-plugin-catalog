@@ -11,7 +11,7 @@ Snakemake storage plugin: {{ plugin_name }}
    :target: #
 {% endif %}
 
-.. image:: https://img.shields.io/badge/author-{{meta["info"]["author"]|urlencode}}-purple?color=%23064e3b
+.. image:: https://img.shields.io/badge/author-{{meta["info"]["author"]|replace("-","--")|urlencode}}-purple?color=%23064e3b
    :target: https://pypi.org/project/{{ package_name }}
 
 .. image:: https://img.shields.io/pypi/v/{{ package_name }}?color=%23047857
