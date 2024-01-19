@@ -109,9 +109,17 @@ class PluginCollectorBase(ABC):
             # convert to rst
             desc = m2r2.convert(desc)
 
-            with MetadataCollector(package, plugin_type) as collector:
-                settings = collector.get_settings()
-                aux_info = self.aux_info(collector)
+            try:
+                with MetadataCollector(package, plugin_type) as collector:
+                    settings = collector.get_settings()
+                    aux_info = self.aux_info(collector)
+            except subprocess.CalledProcessError as e:
+                print(
+                    f"Failed to extract metadata from plugin {package}, skipping. "
+                    "Please check that the plugin does not contain any errors.",
+                    file=sys.stderr,
+                )
+                continue
 
             def get_setting_meta(setting, key, default="", verb=False):
                 value = setting.get(key, default)
