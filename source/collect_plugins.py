@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 from typing import Any, Dict, List
 import uuid
 from pypi_simple import PyPISimple
@@ -99,6 +100,8 @@ class PluginCollectorBase(ABC):
             #     and package != "snakemake-storage-plugin-fs"
             # ):
             #     continue
+
+            print("Collecting", package, file=sys.stderr)
             meta = pypi_api(f"https://pypi.org/pypi/{package}/json")
             plugin_name = package.removeprefix(prefix)
             desc = "\n".join(meta["info"]["description"].split("\n")[2:])
@@ -199,7 +202,7 @@ def collect_plugins():
     with PyPISimple() as pypi_client:
         packages = pypi_client.get_index_page().projects
 
-    for collector in (StoragePluginCollector, ExecutorPluginCollector):
+    for collector in (ExecutorPluginCollector, StoragePluginCollector):
         collector().collect_plugins(plugins, packages, templates)
 
     with open("index.rst", "w") as f:
