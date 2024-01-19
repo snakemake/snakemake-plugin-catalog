@@ -9,3 +9,7 @@
 table code.literal {
     white-space: nowrap !important;
 }
+
+#content {
+    overflow-x: auto;
+}
