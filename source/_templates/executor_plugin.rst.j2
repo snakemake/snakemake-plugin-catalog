@@ -20,6 +20,11 @@ Snakemake executor plugin: {{ plugin_name }}
    :alt: PyPI - License
    :target: https://pypi.org/project/{{ package_name }}
 
+{% if error is not none %}
+.. error::
+    {{ error }}
+{% endif %}
+
 {% if docs_warning %}
 .. warning::
     {{ docs_warning }}
@@ -28,6 +33,8 @@ Snakemake executor plugin: {{ plugin_name }}
 {% if docs_intro %}
 {{ docs_intro }}
 {% endif %}
+
+{% if error is none %}
 
 Installation
 ------------
@@ -73,4 +80,5 @@ Further details
 ---------------
 
 {{ docs_further }}
+{% endif %}
 {% endif %}

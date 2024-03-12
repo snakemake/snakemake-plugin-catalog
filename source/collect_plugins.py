@@ -6,7 +6,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import uuid
 from pypi_simple import PyPISimple
 
@@ -28,6 +28,10 @@ def pypi_api(query, accept="application/json"):
     ).json()
 
 
+class MetadataError(Exception):
+    pass
+
+
 class MetadataCollector:
     def __init__(self, package: str, plugin_type: str):
         self.envname = uuid.uuid4().hex
@@ -39,28 +43,45 @@ class MetadataCollector:
             f"micromamba create -n {self.envname} -y python pip",
             check=True,
             shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
-        subprocess.run(
-            f"micromamba run -n {self.envname} pip install git+https://github.com/snakemake/snakemake.git {self.package}",
-            shell=True,
-            check=True,
-        )
+        try:
+            subprocess.run(
+                f"micromamba run -n {self.envname} pip install snakemake {self.package}",
+                shell=True,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+        except subprocess.CalledProcessError as e:
+            raise MetadataError(
+                f"Cannot be installed with latest stable snakemake: {e.stderr.decode()}"
+            ) from e
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         subprocess.run(
-            f"micromamba env remove -n {self.envname} -y", check=True, shell=True
+            f"micromamba env remove -n {self.envname} -y",
+            check=True,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
 
     def extract_info(self, statement: str) -> str:
         registry = f"{self.plugin_type.title()}PluginRegistry"
         plugin_name = self.package.removeprefix(f"snakemake-{self.plugin_type}-plugin-")
-        res = subprocess.run(
-            f"micromamba run -n {self.envname} python -c \"from snakemake_interface_{self.plugin_type}_plugins.registry import {registry}; plugin = {registry}().get_plugin('{plugin_name}'); {statement}\"",
-            shell=True,
-            check=True,
-            stdout=subprocess.PIPE,
-        )
+        try:
+            res = subprocess.run(
+                f"micromamba run -n {self.envname} python -c \"from snakemake_interface_{self.plugin_type}_plugins.registry import {registry}; plugin = {registry}().get_plugin('{plugin_name}'); {statement}\"",
+                shell=True,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+        except subprocess.CalledProcessError as e:
+            raise MetadataError(f"Not a valid plugin: {e.stderr.decode()}") from e
         return res.stdout.decode()
 
     def get_settings(self) -> List[Dict[str, Any]]:
@@ -89,11 +110,7 @@ class PluginCollectorBase(ABC):
             shutil.rmtree(plugin_dir)
         plugin_dir.mkdir(parents=True, exist_ok=True)
         prefix = f"snakemake-{plugin_type}-plugin-"
-        packages = [
-            package
-            for package in packages
-            if package.startswith(prefix)
-        ]
+        packages = [package for package in packages if package.startswith(prefix)]
         for package in packages:
             # if (
             #     package != "snakemake-storage-plugin-s3"
@@ -109,17 +126,8 @@ class PluginCollectorBase(ABC):
             # convert to rst
             desc = m2r2.convert(desc)
 
-            try:
-                with MetadataCollector(package, plugin_type) as collector:
-                    settings = collector.get_settings()
-                    aux_info = self.aux_info(collector)
-            except subprocess.CalledProcessError as e:
-                print(
-                    f"Failed to extract metadata from plugin {package}, skipping. "
-                    "Please check that the plugin does not contain any errors.",
-                    file=sys.stderr,
-                )
-                continue
+            error = None
+            repository = None
 
             def get_setting_meta(setting, key, default="", verb=False):
                 value = setting.get(key, default)
@@ -157,23 +165,38 @@ class PluginCollectorBase(ABC):
                     "auto-generated usage instractions presented in this catalog."
                 )
 
-            rendered = templates.get_template(f"{plugin_type}_plugin.rst.j2").render(
-                plugin_name=plugin_name,
-                package_name=package,
-                repository=repository,
-                repository_type=repository_type,
-                meta=meta,
-                desc=desc,
-                docs_intro=docs_intro,
-                docs_further=docs_further,
-                docs_warning=docs_warning,
-                plugin_type=plugin_type,
-                settings=settings,
-                get_setting_meta=get_setting_meta,
-                **aux_info,
-            )
-            with open((plugin_dir / plugin_name).with_suffix(".rst"), "w") as f:
-                f.write(rendered)
+            settings = {}
+            aux_info = {}
+
+            try:
+                with MetadataCollector(package, plugin_type) as collector:
+                    settings = collector.get_settings()
+                    aux_info = self.aux_info(collector)
+            except MetadataError as e:
+                error = str(e)
+
+            if error is None:
+                rendered = templates.get_template(
+                    f"{plugin_type}_plugin.rst.j2"
+                ).render(
+                    plugin_name=plugin_name,
+                    package_name=package,
+                    repository=repository,
+                    repository_type=repository_type,
+                    meta=meta,
+                    desc=desc,
+                    docs_intro=docs_intro,
+                    docs_further=docs_further,
+                    docs_warning=docs_warning,
+                    plugin_type=plugin_type,
+                    settings=settings,
+                    get_setting_meta=get_setting_meta,
+                    error=error,
+                    **aux_info,
+                )
+                with open((plugin_dir / plugin_name).with_suffix(".rst"), "w") as f:
+                    f.write(rendered)
+
             plugins[plugin_type].append(plugin_name)
 
 
