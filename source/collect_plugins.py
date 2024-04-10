@@ -112,9 +112,7 @@ class PluginCollectorBase(ABC):
         prefix = f"snakemake-{plugin_type}-plugin-"
         packages = [package for package in packages if package.startswith(prefix)]
         for package in packages:
-            if (
-                package != "snakemake-storage-plugin-xrootd"
-            ):
+            if package != "snakemake-storage-plugin-xrootd":
                 continue
 
             print("Collecting", package, file=sys.stderr)
