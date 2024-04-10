@@ -8,3 +8,6 @@ dependencies:
   - black
   - ratelimit
   - m2r2
+  - cmake
+  - gcc_linux-64
+  - pkgconfig
