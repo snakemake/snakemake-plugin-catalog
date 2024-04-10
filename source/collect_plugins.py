@@ -214,7 +214,7 @@ class StoragePluginCollector(PluginCollectorBase):
             "{'query': qry.query, 'desc': qry.description, 'type': qry.type.name.lower()} "
             "for qry in queries]})"
         )
-        print(dbg)
+        print(dbg, file=sys.stderr)
         info = metadata_collector.extract_info(
             "import json; "
             "queries = plugin.storage_provider.example_queries(); "
