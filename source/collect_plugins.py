@@ -171,6 +171,7 @@ class PluginCollectorBase(ABC):
                     aux_info = self.aux_info(collector)
             except MetadataError as e:
                 error = str(e)
+                print(f"Error installing {package} or retrieving metadata: {error}", file=sys.stderr)
 
             if error is None:
                 rendered = templates.get_template(
