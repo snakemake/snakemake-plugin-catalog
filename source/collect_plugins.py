@@ -112,6 +112,11 @@ class PluginCollectorBase(ABC):
         prefix = f"snakemake-{plugin_type}-plugin-"
         packages = [package for package in packages if package.startswith(prefix)]
         for package in packages:
+            if (
+                package != "snakemake-storage-plugin-xrootd"
+            ):
+                continue
+
             print("Collecting", package, file=sys.stderr)
             meta = pypi_api(f"https://pypi.org/pypi/{package}/json")
             plugin_name = package.removeprefix(prefix)
@@ -168,27 +173,28 @@ class PluginCollectorBase(ABC):
                     aux_info = self.aux_info(collector)
             except MetadataError as e:
                 error = str(e)
-                settings = []
-                aux_info = {}
 
-            rendered = templates.get_template(f"{plugin_type}_plugin.rst.j2").render(
-                plugin_name=plugin_name,
-                package_name=package,
-                repository=repository,
-                repository_type=repository_type,
-                meta=meta,
-                desc=desc,
-                docs_intro=docs_intro,
-                docs_further=docs_further,
-                docs_warning=docs_warning,
-                plugin_type=plugin_type,
-                settings=settings,
-                get_setting_meta=get_setting_meta,
-                error=error,
-                **aux_info,
-            )
-            with open((plugin_dir / plugin_name).with_suffix(".rst"), "w") as f:
-                f.write(rendered)
+            if error is None:
+                rendered = templates.get_template(
+                    f"{plugin_type}_plugin.rst.j2"
+                ).render(
+                    plugin_name=plugin_name,
+                    package_name=package,
+                    repository=repository,
+                    repository_type=repository_type,
+                    meta=meta,
+                    desc=desc,
+                    docs_intro=docs_intro,
+                    docs_further=docs_further,
+                    docs_warning=docs_warning,
+                    plugin_type=plugin_type,
+                    settings=settings,
+                    get_setting_meta=get_setting_meta,
+                    error=error,
+                    **aux_info,
+                )
+                with open((plugin_dir / plugin_name).with_suffix(".rst"), "w") as f:
+                    f.write(rendered)
 
             plugins[plugin_type].append(plugin_name)
 
@@ -203,6 +209,14 @@ class StoragePluginCollector(PluginCollectorBase):
         return "storage"
 
     def aux_info(self, metadata_collector) -> Dict[str, Any]:
+        dbg = metadata_collector.extract_info(
+            "import json; "
+            "queries = plugin.storage_provider.example_queries(); "
+            "print({'example_queries': ["
+            "{'query': qry.query, 'desc': qry.description, 'type': qry.type.name.lower()} "
+            "for qry in queries]})"
+        )
+        print(dbg)
         info = metadata_collector.extract_info(
             "import json; "
             "queries = plugin.storage_provider.example_queries(); "
