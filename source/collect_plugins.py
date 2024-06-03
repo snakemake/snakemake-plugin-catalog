@@ -231,7 +231,11 @@ def collect_plugins():
     with PyPISimple() as pypi_client:
         packages = pypi_client.get_index_page().projects
 
-    for collector in (ExecutorPluginCollector, StoragePluginCollector, ReportPluginCollector):
+    for collector in (
+        ExecutorPluginCollector,
+        StoragePluginCollector,
+        ReportPluginCollector,
+    ):
         collector().collect_plugins(plugins, packages, templates)
 
     with open("index.rst", "w") as f:
