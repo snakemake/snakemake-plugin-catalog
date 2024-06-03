@@ -208,14 +208,6 @@ class StoragePluginCollector(PluginCollectorBase):
         return "storage"
 
     def aux_info(self, metadata_collector) -> Dict[str, Any]:
-        dbg = metadata_collector.extract_info(
-            "import json; "
-            "queries = plugin.storage_provider.example_queries(); "
-            "print({'example_queries': ["
-            "{'query': qry.query, 'desc': qry.description, 'type': qry.type.name.lower()} "
-            "for qry in queries]})"
-        )
-        print(dbg, file=sys.stderr)
         info = metadata_collector.extract_info(
             "import json; "
             "queries = plugin.storage_provider.example_queries(); "
