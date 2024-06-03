@@ -168,27 +168,32 @@ class PluginCollectorBase(ABC):
                     aux_info = self.aux_info(collector)
             except MetadataError as e:
                 error = str(e)
-                settings = []
-                aux_info = {}
+                print(
+                    f"Error installing {package} or retrieving metadata: {error}",
+                    file=sys.stderr,
+                )
 
-            rendered = templates.get_template(f"{plugin_type}_plugin.rst.j2").render(
-                plugin_name=plugin_name,
-                package_name=package,
-                repository=repository,
-                repository_type=repository_type,
-                meta=meta,
-                desc=desc,
-                docs_intro=docs_intro,
-                docs_further=docs_further,
-                docs_warning=docs_warning,
-                plugin_type=plugin_type,
-                settings=settings,
-                get_setting_meta=get_setting_meta,
-                error=error,
-                **aux_info,
-            )
-            with open((plugin_dir / plugin_name).with_suffix(".rst"), "w") as f:
-                f.write(rendered)
+            if error is None:
+                rendered = templates.get_template(
+                    f"{plugin_type}_plugin.rst.j2"
+                ).render(
+                    plugin_name=plugin_name,
+                    package_name=package,
+                    repository=repository,
+                    repository_type=repository_type,
+                    meta=meta,
+                    desc=desc,
+                    docs_intro=docs_intro,
+                    docs_further=docs_further,
+                    docs_warning=docs_warning,
+                    plugin_type=plugin_type,
+                    settings=settings,
+                    get_setting_meta=get_setting_meta,
+                    error=error,
+                    **aux_info,
+                )
+                with open((plugin_dir / plugin_name).with_suffix(".rst"), "w") as f:
+                    f.write(rendered)
 
             plugins[plugin_type].append(plugin_name)
 
