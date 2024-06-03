@@ -203,6 +203,11 @@ class ExecutorPluginCollector(PluginCollectorBase):
         return "executor"
 
 
+class ReportPluginCollector(PluginCollectorBase):
+    def plugin_type(self) -> str:
+        return "report"
+
+
 class StoragePluginCollector(PluginCollectorBase):
     def plugin_type(self) -> str:
         return "storage"
@@ -231,7 +236,11 @@ def collect_plugins():
     with PyPISimple() as pypi_client:
         packages = pypi_client.get_index_page().projects
 
-    for collector in (ExecutorPluginCollector, StoragePluginCollector):
+    for collector in (
+        ExecutorPluginCollector,
+        StoragePluginCollector,
+        ReportPluginCollector,
+    ):
         collector().collect_plugins(plugins, packages, templates)
 
     with open("index.rst", "w") as f:
