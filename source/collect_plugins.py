@@ -87,8 +87,13 @@ class MetadataCollector:
     def get_settings(self) -> List[Dict[str, Any]]:
         info = self.extract_info(
             "import json; "
+            "from inspect import getsourcelines; "
             "fmt_type = lambda thetype: thetype.__name__ if thetype is not None else None; "
-            "fmt_setting_item = lambda key, value: (key, fmt_type(value)) if key == 'type' else (key, value); "
+            "get_source_lines_lambda = lambda value: getsourcelines(value)[0][0][:-1].split('=')[-1][:-1]; "
+            "fmt_setting_item = lambda key, value: ( "
+            "(key, fmt_type(value)) if key == 'type' else "
+            "(key, get_source_lines_lambda(value)) if hasattr(value, '__name__') and fmt_type(value) == '<lambda>' else "
+            "(key, value)); "
             "fmt_setting = lambda setting: dict(map(lambda item: fmt_setting_item(*item), setting.items())); "
             "print(json.dumps(list(map(fmt_setting, plugin.get_settings_info()))))"
         )
