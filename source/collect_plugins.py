@@ -18,7 +18,11 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 import m2r2
 
 
-TEST_PACKAGES = os.environ.get("TEST_PACKAGES").split(",") if "TEST_PACKAGES" in os.environ else None
+TEST_PACKAGES = (
+    os.environ.get("TEST_PACKAGES").split(",")
+    if "TEST_PACKAGES" in os.environ
+    else None
+)
 
 
 @sleep_and_retry
@@ -156,8 +160,14 @@ class PluginCollectorBase(ABC):
                 return value
 
             docs_warning = ""
-            project_urls = meta.get("info", dict()).get("project_urls") or dict()
-            repository = project_urls.get("Repository")
+            info = meta.get("info", dict())
+            project_urls = info.get("project_urls", dict())
+
+            author = info.get("author") or info.get("author_email")
+
+            repository = project_urls.get("Repository") or project_urls.get(
+                "repository"
+            )
             repository_type = None
             if repository is None:
                 docs_warning = (
@@ -201,11 +211,10 @@ class PluginCollectorBase(ABC):
                 else:
                     error += "\n\nPlease contact the plugin author."
 
-            rendered = templates.get_template(
-                f"{plugin_type}_plugin.rst.j2"
-            ).render(
+            rendered = templates.get_template(f"{plugin_type}_plugin.rst.j2").render(
                 plugin_name=plugin_name,
                 package_name=package,
+                author=author,
                 repository=repository,
                 repository_type=repository_type,
                 meta=meta,
