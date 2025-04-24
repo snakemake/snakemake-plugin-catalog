@@ -160,8 +160,8 @@ class PluginCollectorBase(ABC):
                 return value
 
             docs_warning = ""
-            info = meta.get("info", dict())
-            project_urls = info.get("project_urls", dict())
+            info = meta.get("info") or dict()
+            project_urls = info.get("project_urls") or dict()
 
             author = info.get("author") or info.get("author_email")
 
