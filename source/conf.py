@@ -45,5 +45,5 @@ html_theme_options = {
 }
 html_title = "Snakemake plugin catalog"
 html_css_files = ["custom.css"]
-pygments_style = "sphinx"
+pygments_style = "native"
 html_permalinks_icon = Icons.permalinks_icon

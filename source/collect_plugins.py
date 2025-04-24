@@ -2,10 +2,12 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
 import sys
+import textwrap
 from typing import Any, Dict, List, Optional
 import uuid
 from pypi_simple import PyPISimple
@@ -14,6 +16,9 @@ import requests
 from ratelimit import limits, sleep_and_retry
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 import m2r2
+
+
+TEST_PACKAGES = os.environ.get("TEST_PACKAGES").split(",") if "TEST_PACKAGES" in os.environ else None
 
 
 @sleep_and_retry
@@ -39,26 +44,38 @@ class MetadataCollector:
         self.plugin_type = plugin_type
 
     def __enter__(self):
-        subprocess.run(
-            f"micromamba create -n {self.envname} -y python pip",
-            check=True,
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        try:
+        py_ver = sys.version_info
+        error = None
+        for py_minor in range(py_ver.minor, 0, -1):
+            py_ver_constraint = f"{py_ver.major}.{py_minor}"
             subprocess.run(
-                f"micromamba run -n {self.envname} pip install snakemake {self.package}",
-                shell=True,
+                f"micromamba create -n {self.envname} -y python={py_ver_constraint} pip",
                 check=True,
+                shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
-        except subprocess.CalledProcessError as e:
+            try:
+                subprocess.run(
+                    f"micromamba run -n {self.envname} pip install snakemake {self.package}",
+                    shell=True,
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+            except subprocess.CalledProcessError as e:
+                subprocess.run("micromamba env remove -n {self.envname} -y", shell=True)
+                if error is None:
+                    error = e.stderr.decode()
+                print(
+                    f"Error installing {self.package} with Python {py_ver_constraint}: {e.stderr.decode()}",
+                    file=sys.stderr,
+                )
+            return self
+        if error is not None:
             raise MetadataError(
-                f"Cannot be installed with latest stable snakemake: {e.stderr.decode()}"
-            ) from e
-        return self
+                f"Cannot be installed with latest stable snakemake: {error}"
+            )
 
     def __exit__(self, exc_type, exc_value, traceback):
         subprocess.run(
@@ -112,6 +129,9 @@ class PluginCollectorBase(ABC):
         prefix = f"snakemake-{plugin_type}-plugin-"
         packages = [package for package in packages if package.startswith(prefix)]
         for package in packages:
+            if TEST_PACKAGES is not None and package not in TEST_PACKAGES:
+                continue
+
             print("Collecting", package, file=sys.stderr)
             meta = pypi_api(f"https://pypi.org/pypi/{package}/json")
             plugin_name = package.removeprefix(prefix)
@@ -142,7 +162,9 @@ class PluginCollectorBase(ABC):
             if repository is None:
                 docs_warning = (
                     "No repository URL found in Pypi metadata. The plugin should "
-                    "specify a repository URL in its pyproject.toml (key 'repository')."
+                    "specify a repository URL in its pyproject.toml (key 'repository'). "
+                    "It is unclear whether the plugin is maintained and reviewed by "
+                    "the official Snakemake organization (https://github.com/snakemake)."
                 )
             else:
                 if repository.startswith("https://github.com"):
@@ -156,7 +178,7 @@ class PluginCollectorBase(ABC):
                     f"No documentation found in repository {repository}. The plugin should "
                     "provide a docs/intro.md with some introductory sentences and "
                     "optionally a docs/further.md file with details beyond the "
-                    "auto-generated usage instractions presented in this catalog."
+                    "auto-generated usage instructions presented in this catalog."
                 )
 
             settings = {}
@@ -173,27 +195,33 @@ class PluginCollectorBase(ABC):
                     file=sys.stderr,
                 )
 
-            if error is None:
-                rendered = templates.get_template(
-                    f"{plugin_type}_plugin.rst.j2"
-                ).render(
-                    plugin_name=plugin_name,
-                    package_name=package,
-                    repository=repository,
-                    repository_type=repository_type,
-                    meta=meta,
-                    desc=desc,
-                    docs_intro=docs_intro,
-                    docs_further=docs_further,
-                    docs_warning=docs_warning,
-                    plugin_type=plugin_type,
-                    settings=settings,
-                    get_setting_meta=get_setting_meta,
-                    error=error,
-                    **aux_info,
-                )
-                with open((plugin_dir / plugin_name).with_suffix(".rst"), "w") as f:
-                    f.write(rendered)
+            if error is not None:
+                if repository is not None:
+                    error += f"\n\nPlease file a corresponding issue in the plugin's `repository <{repository}>`__ (if there is none yet)."
+                else:
+                    error += "\n\nPlease contact the plugin author."
+
+            rendered = templates.get_template(
+                f"{plugin_type}_plugin.rst.j2"
+            ).render(
+                plugin_name=plugin_name,
+                package_name=package,
+                repository=repository,
+                repository_type=repository_type,
+                meta=meta,
+                desc=desc,
+                docs_intro=docs_intro,
+                docs_further=docs_further,
+                docs_warning=docs_warning,
+                plugin_type=plugin_type,
+                settings=settings,
+                get_setting_meta=get_setting_meta,
+                error=error,
+                textwrap=textwrap,
+                **aux_info,
+            )
+            with open((plugin_dir / plugin_name).with_suffix(".rst"), "w") as f:
+                f.write(rendered)
 
             plugins[plugin_type].append(plugin_name)
 
@@ -223,6 +251,11 @@ class StoragePluginCollector(PluginCollectorBase):
         return json.loads(info)
 
 
+class LoggerPluginCollector(PluginCollectorBase):
+    def plugin_type(self):
+        return "logger"
+
+
 def collect_plugins():
     templates = Environment(
         loader=FileSystemLoader("_templates"),
@@ -240,6 +273,7 @@ def collect_plugins():
         ExecutorPluginCollector,
         StoragePluginCollector,
         ReportPluginCollector,
+        LoggerPluginCollector,
     ):
         collector().collect_plugins(plugins, packages, templates)
 

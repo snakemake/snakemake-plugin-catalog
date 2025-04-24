@@ -1,0 +1,11 @@
+{% extends "plugin_base.rst.j2" %}
+
+{% block type %}logger{% endblock %}
+
+{% block usage %}
+In order to use the plugin, run Snakemake (>=9.0) with the corresponding value for the logger flag::
+
+    snakemake --logger {{ plugin_name }} ...
+
+with ``...`` being any additional arguments you want to use.
+{% endblock %}

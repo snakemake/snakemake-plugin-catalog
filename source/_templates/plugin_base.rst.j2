@@ -1,0 +1,94 @@
+{% set settings_label = plugin_name + "_settings" %}
+
+Snakemake {% block type %}{% endblock %} plugin: {{ plugin_name }}
+###########################################
+
+{% if repository is not none %}
+.. image:: https://img.shields.io/badge/repository-{{ repository_type }}-blue?color=%23022c22
+   :target: {{ repository }}
+{% else %}
+.. image:: https://img.shields.io/badge/repository-unknown-blue?color=%23022c22
+   :target: #
+{% endif %}
+
+.. image:: https://img.shields.io/badge/author-{{meta["info"]["author"]|replace("-","--")|urlencode}}-purple?color=%23064e3b
+   :target: https://pypi.org/project/{{ package_name }}
+
+.. image:: https://img.shields.io/pypi/v/{{ package_name }}?color=%23047857
+   :alt: PyPI - Version
+   :target: https://pypi.org/project/{{ package_name }}
+
+.. image:: https://img.shields.io/pypi/l/{{ package_name }}?color=%2310b981
+   :alt: PyPI - License
+   :target: https://pypi.org/project/{{ package_name }}
+
+{% if repository is not none and not repository.startswith("https://github.com/snakemake/") %}
+.. warning::
+   This plugin is not maintained and reviewed by the official Snakemake organization.
+{% endif %}
+
+{% if error is not none %}
+.. error::
+{{ textwrap.indent(error, "    ") }}
+{% endif %}
+
+{% if docs_warning %}
+.. warning::
+{{ textwrap.indent(docs_warning, "    ") }}
+{% endif %}
+
+{% if docs_intro %}
+{{ docs_intro }}
+{% endif %}
+
+{% if error is none %}
+
+Installation
+------------
+
+Install this plugin by installing it with pip or mamba, e.g.::
+
+    pip install snakemake-{{ self.type() }}-plugin-{{ plugin_name }}
+
+Usage
+-----
+
+{% block usage %}
+{% endblock %}
+
+{% if settings %}
+.. _{{ settings_label }}:
+
+Settings
+--------
+
+The {{ self.type() }} plugin has the following settings (which can be passed via command line, 
+the workflow or environment variables, if provided in the respective columns):
+
+.. list-table:: Settings
+   :header-rows: 1
+
+   * - CLI argument
+     - Description
+     - Default
+     - Choices
+     - Required
+     - Type
+{% for setting in settings %}
+   * - ``{{ setting["cliarg"] }} {{ get_setting_meta(setting, "metavar", default="VALUE") }}``
+     - {{ get_setting_meta(setting, "help") }}
+     - {{ get_setting_meta(setting, "default", verb=True) }}
+     - {{ get_setting_meta(setting, "choices") }}
+     - {{ get_setting_meta(setting, "required") }}
+     - {{ get_setting_meta(setting, "type") }}
+{% endfor %}
+
+{% endif %}
+
+{% if docs_further is not none %}
+Further details
+---------------
+
+{{ docs_further }}
+{% endif %}
+{% endif %}

@@ -1,0 +1,11 @@
+{% extends "plugin_base.rst.j2" %}
+
+{% block type %}report{% endblock %}
+
+{% block usage %}
+In order to use the plugin, run Snakemake (>=8.5) with the corresponding value for the reporter flag::
+
+    snakemake --reporter {{ plugin_name }} ...
+
+with ``...`` being any additional arguments you want to use.
+{% endblock %}
