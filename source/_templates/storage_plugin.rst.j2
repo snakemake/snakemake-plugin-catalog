@@ -4,7 +4,7 @@
 
 {% block usage %}
 Queries
-^^^^^^^
+=======
 
 Queries to this storage should have the following format:
 
@@ -21,7 +21,7 @@ Queries to this storage should have the following format:
 {% endfor %}
 
 As default provider
-^^^^^^^^^^^^^^^^^^^
+===================
 If you want all your input and output (which is not explicitly marked to come from 
 another storage) to be written to and read from this storage, you can use it as a 
 default provider via:
@@ -45,7 +45,7 @@ You can also pass custom settings via command line arguments:
 {% endif %}
 
 Within the workflow
-^^^^^^^^^^^^^^^^^^^
+===================
 
 If you want to use this storage plugin only for specific items, you can register it
 inside of your workflow::
@@ -77,7 +77,7 @@ inside of your workflow::
 
 {% if settings %}
 Using multiple entities of the same storage plugin
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+==================================================
 
 In case you have to use this storage plugin multiple times, but with different settings
 (e.g. to connect to different storage servers), you can register it multiple times,

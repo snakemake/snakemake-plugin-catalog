@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -290,7 +291,10 @@ def collect_plugins():
         f.write(templates.get_template("index.rst.j2").render(plugins=plugins))
 
 
-def get_docs(repository: str, section: str, branches=["main", "master"]):
+SECTION_MARK_ORDER = '#*=-^"~:`_+<'
+
+
+def get_docs(repository: str | None, section: str, branches=["main", "master"]):
     if repository is None:
         return None
 
@@ -311,6 +315,15 @@ def get_docs(repository: str, section: str, branches=["main", "master"]):
 
     retrieved = retrieve()
     if retrieved is not None:
-        return m2r2.convert(retrieved)
+        renderer = m2r2.RestRenderer()
+        renderer.hmarks = {
+            i + 1: mark
+            for i, mark in enumerate(
+                SECTION_MARK_ORDER[3:]
+                if section == "further"
+                else SECTION_MARK_ORDER[2:]
+            )
+        }
+        return m2r2.convert(retrieved, renderer=renderer)
     else:
         return None

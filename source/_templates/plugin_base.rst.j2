@@ -44,14 +44,14 @@ Snakemake {% block type %}{% endblock %} plugin: {{ plugin_name }}
 {% if error is none %}
 
 Installation
-------------
+************
 
 Install this plugin by installing it with pip or mamba, e.g.::
 
     pip install snakemake-{{ self.type() }}-plugin-{{ plugin_name }}
 
 Usage
------
+*****
 
 {% block usage %}
 {% endblock %}
@@ -60,7 +60,7 @@ Usage
 .. _{{ settings_label }}:
 
 Settings
---------
+********
 
 The {{ self.type() }} plugin has the following settings (which can be passed via command line, 
 the workflow or environment variables, if provided in the respective columns):
@@ -87,7 +87,7 @@ the workflow or environment variables, if provided in the respective columns):
 
 {% if docs_further is not none %}
 Further details
----------------
+***************
 
 {{ docs_further }}
 {% endif %}
