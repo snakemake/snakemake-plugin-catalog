@@ -43,44 +43,77 @@ class MetadataError(Exception):
 
 
 class MetadataCollector:
-    def __init__(self, package: str, plugin_type: str):
+    def __init__(self, package: str, plugin_type: str, version: str):
         self.envname = uuid.uuid4().hex
         self.package = package
+        self.version = version
         self.plugin_type = plugin_type
 
     def __enter__(self):
         py_ver = sys.version_info
         error = None
-        for py_minor in range(py_ver.minor, 0, -1):
-            py_ver_constraint = f"{py_ver.major}.{py_minor}"
+
+        # try using conda first
+        try:
             subprocess.run(
-                f"micromamba create -n {self.envname} -y python={py_ver_constraint} pip",
+                f"micromamba create -c conda-forge -c bioconda -n {self.envname} -y {self.package}={self.version} snakemake-minimal",
                 check=True,
                 shell=True,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
             )
+            return self
+        except subprocess.CalledProcessError:
+            pass
+
+        for py_minor in range(py_ver.minor, 7, -1):
+            py_ver_constraint = f"{py_ver.major}.{py_minor}"
             try:
                 subprocess.run(
-                    f"micromamba run -n {self.envname} pip install snakemake {self.package}",
+                    f"micromamba create -n {self.envname} -y python={py_ver_constraint} pip",
+                    check=True,
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                )
+            except subprocess.CalledProcessError as e:
+                print(
+                    f"Error creating environment with Python {py_ver_constraint}: {e.stdout.decode()}",
+                    file=sys.stderr,
+                )
+                continue
+            try:
+                subprocess.run(
+                    f"micromamba run -n {self.envname} pip install snakemake {self.package}={self.version}",
                     shell=True,
                     check=True,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
                 )
             except subprocess.CalledProcessError as e:
-                subprocess.run("micromamba env remove -n {self.envname} -y", shell=True)
+                # silently remove the environment
+                try:
+                    subprocess.run(
+                        "micromamba env remove -n {self.envname} -y",
+                        shell=True,
+                        check=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                    )
+                except subprocess.CalledProcessError:
+                    pass
                 if error is None:
-                    error = e.stderr.decode()
+                    error = e.stdout.decode()
                 print(
-                    f"Error installing {self.package} with Python {py_ver_constraint}: {e.stderr.decode()}",
+                    f"Error installing {self.package} with Python {py_ver_constraint}.",
                     file=sys.stderr,
                 )
+                # error in this try, move to next try
+                continue
             return self
-        if error is not None:
-            raise MetadataError(
-                f"Cannot be installed with latest stable snakemake: {error}"
-            )
+        raise MetadataError(
+            f"Cannot be installed with latest stable snakemake: {error}"
+        )
 
     def __exit__(self, exc_type, exc_value, traceback):
         subprocess.run(
@@ -141,6 +174,7 @@ class PluginCollectorBase(ABC):
             meta = pypi_api(f"https://pypi.org/pypi/{package}/json")
             plugin_name = package.removeprefix(prefix)
             desc = "\n".join(meta["info"]["description"].split("\n")[2:])
+            version = meta["info"]["version"]
 
             # convert to rst
             desc = m2r2.convert(desc)
@@ -164,7 +198,12 @@ class PluginCollectorBase(ABC):
             info = meta.get("info") or dict()
             project_urls = info.get("project_urls") or dict()
 
-            author = info.get("author") or info.get("author_email")
+            author_info = info.get("author") or info.get("author_email")
+            authors = (
+                [author.strip() for author in author_info.split(",")]
+                if author_info
+                else []
+            )
 
             repository = project_urls.get("Repository") or project_urls.get(
                 "repository"
@@ -196,7 +235,7 @@ class PluginCollectorBase(ABC):
             aux_info = {}
 
             try:
-                with MetadataCollector(package, plugin_type) as collector:
+                with MetadataCollector(package, plugin_type, version) as collector:
                     settings = collector.get_settings()
                     aux_info = self.aux_info(collector)
             except MetadataError as e:
@@ -210,12 +249,12 @@ class PluginCollectorBase(ABC):
                 if repository is not None:
                     error += f"\n\nPlease file a corresponding issue in the plugin's `repository <{repository}>`__ (if there is none yet)."
                 else:
-                    error += "\n\nPlease contact the plugin author."
+                    error += "\n\nPlease contact the plugin authors."
 
             rendered = templates.get_template(f"{plugin_type}_plugin.rst.j2").render(
                 plugin_name=plugin_name,
                 package_name=package,
-                author=author,
+                authors=authors,
                 repository=repository,
                 repository_type=repository_type,
                 meta=meta,

@@ -13,3 +13,8 @@ table code.literal {
 #content {
     overflow-x: auto;
 }
+
+.admonition.error pre {
+    overflow-y: auto;
+    max-height: 20em;
+}

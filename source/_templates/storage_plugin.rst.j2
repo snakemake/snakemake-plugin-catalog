@@ -39,7 +39,8 @@ You can also pass custom settings via command line arguments:
 
     snakemake --default-storage-provider {{ plugin_name }} --default-storage-prefix ... \
         {% for setting in settings %}
-        {{ setting["cliarg"] }} ... {% if not loop.last %}\{% endif %}
+        {{ setting["cliarg"] }} ... {% if not loop.last %}\
+        {% endif %}
         {% endfor %}
 
 {% endif %}

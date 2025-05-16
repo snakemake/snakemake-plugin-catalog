@@ -34,8 +34,6 @@ html_theme = "sphinxawesome_theme"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_theme_options = {
-    "primary_color": "emerald",
-    "secondary_color": "emerald",
     "logo_light": "logo-snake.svg",
     "logo_dark": "logo-snake.svg",
     "main_nav_links": {
