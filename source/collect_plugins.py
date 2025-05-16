@@ -84,7 +84,7 @@ class MetadataCollector:
                 continue
             try:
                 subprocess.run(
-                    f"micromamba run -n {self.envname} pip install snakemake {self.package}={self.version}",
+                    f"micromamba run -n {self.envname} pip install snakemake {self.package}=={self.version}",
                     shell=True,
                     check=True,
                     stdout=subprocess.PIPE,
