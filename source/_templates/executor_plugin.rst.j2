@@ -8,6 +8,8 @@ In order to use the plugin, run Snakemake (>=8.0) in the folder where your workf
     snakemake --executor {{ plugin_name }} --default-resources --jobs N ...
 
 with ``N`` being the number of jobs you want to run in parallel and ``...`` being any additional arguments you want to use (see below).
+The machine on which you run Snakemake must have the executor plugin installed, and, depending on the type of the executor plugin, have access to the target service of the executor plugin (e.g. an HPC middleware like `slurm <https://snakemake.github.io/snakemake-plugin-catalog/plugins/executor/slurm.html>`__ with the ``sbatch`` command, or internet access to submit jobs to some cloud provider, e.g. `azure <https://snakemake.github.io/snakemake-plugin-catalog/plugins/executor/azure-batch.html>`__).
+
 The flag ``--default-resources`` ensures that Snakemake auto-calculates the ``mem`` and ``disk`` `resources <https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#standard-resources>`__ for each job, based on the input file size.
 The values assumed there are conservative and should usually suffice.
 However, you can always override those defaults by specifying the resources in your Snakemake rules or via the ``--set-resources`` flag.
