@@ -20,10 +20,11 @@ For the latter, you have to additionally use a suitable storage plugin (see sect
 All arguments can also be persisted via a `profile <https://snakemake.readthedocs.io/en/stable/executing/cli.html#profiles>`__, such that they don't have to be specified on each invocation.
 Here, this would mean the following entries inside of the profile
 
-```yaml
-executor: {{ plugin_name }}
-default_resources: []
-```
+.. code-block:: yaml
+
+    executor: {{ plugin_name }}
+    default_resources: []
+
 For specifying other default resources than the built-in ones, see the `docs <https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#default-resources>`__.
 
 {% endblock %}
