@@ -3,12 +3,12 @@
 {% block type %}executor{% endblock %}
 
 {% block usage %}
-In order to use the plugin, run Snakemake (>=8.0) in the folder where your workflow resides (containing either ``workflow/Snakefile`` or ``Snakefile``) with the corresponding value for the executor flag::
+In order to use the plugin, run Snakemake (>=8.0) in the folder where your workflow code and config resides (containing either ``workflow/Snakefile`` or ``Snakefile``) with the corresponding value for the executor flag::
 
     snakemake --executor {{ plugin_name }} --default-resources --jobs N ...
 
 with ``N`` being the number of jobs you want to run in parallel and ``...`` being any additional arguments you want to use (see below).
-The flag ``--default-resources`` ensures that Snakemake auto-calculates the ``mem`` and ``disk`` resources for each job, based on the input file size.
+The flag ``--default-resources`` ensures that Snakemake auto-calculates the ``mem`` and ``disk`` `resources <https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#standard-resources>`__ for each job, based on the input file size.
 The values assumed there are conservative and should usually suffice.
 However, you can always override those defaults by specifying the resources in your Snakemake rules or via the ``--set-resources`` flag.
 
