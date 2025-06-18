@@ -1,4 +1,5 @@
 {% set settings_label = plugin_name + "_settings" %}
+{% set further_label = plugin_name + "_further" %}
 
 Snakemake {% block type %}{% endblock %} plugin: {{ plugin_name }}
 ###########################################
@@ -94,6 +95,9 @@ the workflow or environment variables, if provided in the respective columns):
 {% endif %}
 
 {% if docs_further is not none %}
+
+.. _{{ further_label }}:
+
 Further details
 ***************
 
