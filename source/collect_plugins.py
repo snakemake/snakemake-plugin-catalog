@@ -29,17 +29,24 @@ TEST_PACKAGES = (
 @sleep_and_retry
 @limits(calls=20, period=1)
 def pypi_api(query, accept="application/json"):
-    return requests.get(
+    res = requests.get(
         query,
         headers={
             "Accept": accept,
             "User-Agent": "Snakemake plugin catalog (https://github.com/snakemake/snakemake-plugin-catalog)",
         },
-    ).json()
+    )
+    if res.status_code != 200:
+        raise MetadataError(f"API request {query} failed with status {res.status_code}")
+    return res.json()
 
 
 class MetadataError(Exception):
-    pass
+    def log(self, package: str) -> None:
+        print(
+            f"Error installing {package} or retrieving metadata: {self}",
+            file=sys.stderr,
+        )
 
 
 class MetadataCollector:
@@ -171,7 +178,12 @@ class PluginCollectorBase(ABC):
                 continue
 
             print("Collecting", package, file=sys.stderr)
-            meta = pypi_api(f"https://pypi.org/pypi/{package}/json")
+            try:
+                meta = pypi_api(f"https://pypi.org/pypi/{package}/json")
+            except MetadataError as e:
+                e.log(package)
+                print(f"Skipping {package} because pypi does not provide metadata.", file=sys.stderr)
+                continue
             plugin_name = package.removeprefix(prefix)
             desc = "\n".join(meta["info"]["description"].split("\n")[2:])
             version = meta["info"]["version"]
@@ -240,10 +252,8 @@ class PluginCollectorBase(ABC):
                     aux_info = self.aux_info(collector)
             except MetadataError as e:
                 error = str(e)
-                print(
-                    f"Error installing {package} or retrieving metadata: {error}",
-                    file=sys.stderr,
-                )
+                e.log(package)
+                # go on, just with error registered for display
 
             if error is not None:
                 if repository is not None:
