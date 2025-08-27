@@ -305,6 +305,11 @@ class LoggerPluginCollector(PluginCollectorBase):
         return "logger"
 
 
+class SchedulerPluginCollector(PluginCollectorBase):
+    def plugin_type(self):
+        return "scheduler"
+
+
 def collect_plugins():
     templates = Environment(
         loader=FileSystemLoader("_templates"),
@@ -323,6 +328,7 @@ def collect_plugins():
         StoragePluginCollector,
         ReportPluginCollector,
         LoggerPluginCollector,
+        SchedulerPluginCollector,
     ):
         collector().collect_plugins(plugins, packages, templates)
 
