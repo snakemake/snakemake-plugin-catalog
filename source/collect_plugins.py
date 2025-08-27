@@ -182,7 +182,10 @@ class PluginCollectorBase(ABC):
                 meta = pypi_api(f"https://pypi.org/pypi/{package}/json")
             except MetadataError as e:
                 e.log(package)
-                print(f"Skipping {package} because pypi does not provide metadata.", file=sys.stderr)
+                print(
+                    f"Skipping {package} because pypi does not provide metadata.",
+                    file=sys.stderr,
+                )
                 continue
             plugin_name = package.removeprefix(prefix)
             desc = "\n".join(meta["info"]["description"].split("\n")[2:])
