@@ -64,13 +64,13 @@ class MetadataCollector:
     def registry(self):
         return f"{self.plugin_type.title()}PluginRegistry"
 
-    def _run(self, cmd: List[str]) -> subprocess.CompletedProcess:
+    def _run(self, cmd: List[str], stdout=subprocess.PIPE, stderr=subprocess.STDOUT) -> subprocess.CompletedProcess:
         assert self.tempdir is not None
         return subprocess.run(
             cmd,
             cwd=self.tempdir.name,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=stdout,
+            stderr=stderr,
             check=True,
         )
 
@@ -91,19 +91,32 @@ class MetadataCollector:
 
         def pixi_add(args=None):
             args = args or []
-            self._run(["pixi", "add", f"{self.package}={self.version}"] + args)
+            self._run(["pixi", "add", f"{self.package}=={self.version}"] + args)
 
+        # try conda first
         try:
             pixi_add(["snakemake-minimal"])
             return self
         except subprocess.CalledProcessError:
             pass
 
-        try:
-            pixi_add(["snakemake", "--pypi"])
-            return self
-        except subprocess.CalledProcessError as e:
-            raise MetadataError(f"Cannot be installed: {e.stdout.decode()}") from e
+        # and now plain python
+        py_ver = sys.version_info
+        error = None
+
+        for py_minor in range(py_ver.minor, 7, -1):
+            py_ver_constraint = f"{py_ver.major}.{py_minor}"
+
+            try:
+                self._run(["pixi", "add", f"python={py_ver_constraint}"])
+                pixi_add(["snakemake", "--pypi"])
+                return self
+            except subprocess.CalledProcessError as e:
+                if error is None:
+                    error = e.stdout.decode()
+
+        assert error is not None
+        raise MetadataError(f"Cannot be installed: {error}")
 
     def __exit__(self, exc_type, exc_value, traceback):
         assert self.tempdir is not None
@@ -111,7 +124,7 @@ class MetadataCollector:
 
     def extract_info(self, statement: str) -> str:
         try:
-            res = self._run(["pixi", "run", "extract-info", statement])
+            res = self._run(["pixi", "run", "extract-info", statement], stderr=subprocess.PIPE)
         except subprocess.CalledProcessError as e:
             raise MetadataError(f"Not a valid plugin: {e.stderr.decode()}") from e
         return res.stdout.decode()
