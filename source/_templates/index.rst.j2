@@ -8,10 +8,42 @@ Note that plugin support is available in `Snakemake 8.0 <https://snakemake.githu
 Contributing
 ------------
 
-* Improving PRs or issues with the plugin catalog (only the catalog not the plugins themselves) can be made `here <http://github.com/snakemake/snakemake-plugin-catalog>`_.
-* Improving PRs or issues with the plugins themselves can be made at the respective plugin repository (see the docs of each plugin here).
-* Resources for contributing to new plugin development include the `snakemake-interface-executor-plugins <https://github.com/snakemake/snakemake-interface-executor-plugins>`_ and `snakemake-interface-storage-plugins <https://github.com/snakemake/snakemake-interface-storage-plugins>`_ (along with the `poetry-snakemake-plugin <https://github.com/snakemake/poetry-snakemake-plugin>`_ for automatically generating skeleton code) and referring to existing plugin repositories.
-* New plugins will be automatically found on PyPI (which implies that they have to be released to PyPI first) and added to this catalog. If you expect your plugin to appear here but do not see it, please check the `nightly github action <https://github.com/snakemake/snakemake-plugin-catalog/actions/workflows/deploy.yml>`_ for errors with your plugin (will occur in the logs).
+Improve existing plugins
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Improve existing plugins by filing issues or creating pull requests at the respective plugin Github repository (see the docs of each plugin here).
+
+Create new plugins
+^^^^^^^^^^^^^^^^^^
+
+Snakemake offers the following plugin types (the list will be further extended in the future):
+
+* executor plugins
+* storage plugins
+* logger plugins
+* report plugins
+* scheduler plugins
+
+Each plugin type has a dedicated plugin interface package which offers stable and semantically versioned Python base classes that have to be implemented.
+The interfaces are documented in the respective plugin interface repositories:
+
+* `snakemake-interface-executor-plugins <https://github.com/snakemake/snakemake-interface-executor-plugins>`__
+* `snakemake-interface-storage-plugins <https://github.com/snakemake/snakemake-interface-storage-plugins>`__
+* `snakemake-interface-logger-plugins <https://github.com/snakemake/snakemake-interface-logger-plugins>`__
+* `snakemake-interface-report-plugins <https://github.com/snakemake/snakemake-interface-report-plugins>`__
+* `snakemake-interface-scheduler-plugins <https://github.com/snakemake/snakemake-interface-scheduler-plugins>`__
+
+When starting a new plugin, use the `snakedeploy scaffold-snakemake-plugin <https://snakedeploy.readthedocs.io/en/stable/snakemake_developers/scaffold_snakemake_plugins.html>`__ subcommand.
+It will generate skeleton code for your desired plugin type as well as adding a testing infrastructure and continuous integration.
+
+New plugins will be automatically found on PyPI (which implies that they have to be released to PyPI first) and added to this catalog.
+If you expect your plugin to appear here but do not see it, please check the `nightly github action <https://github.com/snakemake/snakemake-plugin-catalog/actions/workflows/deploy.yml>`_ for errors with your plugin (will occur in the logs).
+
+Improve the catalog
+^^^^^^^^^^^^^^^^^^^
+
+Improve the catalog itself by filing issues or creating pull requests at https://github.com/snakemake/snakemake-plugin-catalog.
+
 
 {% for plugin_type, plugins in plugins.items() %}
 .. toctree::
