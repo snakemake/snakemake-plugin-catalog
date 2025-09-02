@@ -8,40 +8,40 @@ defaults:
     shell: bash -leo pipefail {0} {0}
 
 jobs:
-  formatting:
+  qc:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
-      - uses: mamba-org/setup-micromamba@v1
+      - uses: prefix-dev/setup-pixi@v0.9.0
         with:
-          environment-file: environment.yml
-          init-shell: >-
-            bash
-          cache-environment: true
-          post-cleanup: 'all'
+          cache: true
 
-      - name: Formatting
-        run: black --check .
+      - name: QC
+        run: pixi run qc
 
-  testing:
+  test-fast:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: mamba-org/setup-micromamba@v1
+      - uses: prefix-dev/setup-pixi@v0.9.0
         with:
-          environment-file: environment.yml
-          init-shell: >-
-            bash
-          cache-environment: true
-          post-cleanup: 'all'
-
-      - name: Deploy additional packages
-        run: |
-          pip install sphinxawesome-theme
-          pip install pypi_simple
+          cache: true
 
       - name: Building
-        run: make html
+        run: pixi run build-single
+
+  test:
+    runs-on: ubuntu-latest
+    needs: test-fast
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: prefix-dev/setup-pixi@v0.9.0
+        with:
+          cache: true
+
+      - name: Building
+        run: pixi run build

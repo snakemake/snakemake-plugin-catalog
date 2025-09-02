@@ -1,15 +1,14 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from dataclasses import dataclass
 import json
 import os
 from pathlib import Path
-import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import textwrap
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 import uuid
 from pypi_simple import PyPISimple
 
@@ -55,93 +54,64 @@ class MetadataCollector:
         self.package = package
         self.version = version
         self.plugin_type = plugin_type
+        self.tempdir = None
+
+    @property
+    def plugin_name(self):
+        return self.package.removeprefix(f"snakemake-{self.plugin_type}-plugin-")
+
+    @property
+    def registry(self):
+        return f"{self.plugin_type.title()}PluginRegistry"
+
+    def _run(self, cmd: List[str]) -> subprocess.CompletedProcess:
+        assert self.tempdir is not None
+        return subprocess.run(
+            cmd,
+            cwd=self.tempdir.name,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
 
     def __enter__(self):
-        py_ver = sys.version_info
-        error = None
+        self.tempdir = tempfile.TemporaryDirectory()
+        self._run(["pixi", "init", "--channel", "conda-forge", "--channel", "bioconda"])
+        self._run(
+            [
+                "pixi",
+                "task",
+                "add",
+                "--arg",
+                "statement",
+                "extract-info",
+                f"python -c \"from snakemake_interface_{self.plugin_type}_plugins.registry import {self.registry}; plugin = {self.registry}().get_plugin('{self.plugin_name}'); {{{{statement}}}}\"",
+            ]
+        )
 
-        # try using conda first
+        def pixi_add(args=None):
+            args = args or []
+            self._run(["pixi", "add", f"{self.package}={self.version}"] + args)
+
         try:
-            subprocess.run(
-                f"micromamba create -c conda-forge -c bioconda -n {self.envname} -y {self.package}={self.version} snakemake-minimal",
-                check=True,
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            )
+            pixi_add(["snakemake-minimal"])
             return self
         except subprocess.CalledProcessError:
             pass
 
-        for py_minor in range(py_ver.minor, 7, -1):
-            py_ver_constraint = f"{py_ver.major}.{py_minor}"
-            try:
-                subprocess.run(
-                    f"micromamba create -n {self.envname} -y python={py_ver_constraint} pip",
-                    check=True,
-                    shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                )
-            except subprocess.CalledProcessError as e:
-                print(
-                    f"Error creating environment with Python {py_ver_constraint}: {e.stdout.decode()}",
-                    file=sys.stderr,
-                )
-                continue
-            try:
-                subprocess.run(
-                    f"micromamba run -n {self.envname} pip install snakemake {self.package}=={self.version}",
-                    shell=True,
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                )
-            except subprocess.CalledProcessError as e:
-                # silently remove the environment
-                try:
-                    subprocess.run(
-                        "micromamba env remove -n {self.envname} -y",
-                        shell=True,
-                        check=True,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                    )
-                except subprocess.CalledProcessError:
-                    pass
-                if error is None:
-                    error = e.stdout.decode()
-                print(
-                    f"Error installing {self.package} with Python {py_ver_constraint}.",
-                    file=sys.stderr,
-                )
-                # error in this try, move to next try
-                continue
+        try:
+            pixi_add(["snakemake", "--pypi"])
             return self
-        raise MetadataError(
-            f"Cannot be installed with latest stable snakemake: {error}"
-        )
+        except subprocess.CalledProcessError as e:
+            raise MetadataError(f"Cannot be installed: {e.stdout.decode()}") from e
 
     def __exit__(self, exc_type, exc_value, traceback):
-        subprocess.run(
-            f"micromamba env remove -n {self.envname} -y",
-            check=True,
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
+        assert self.tempdir is not None
+        self.tempdir.cleanup()
 
     def extract_info(self, statement: str) -> str:
-        registry = f"{self.plugin_type.title()}PluginRegistry"
-        plugin_name = self.package.removeprefix(f"snakemake-{self.plugin_type}-plugin-")
         try:
-            res = subprocess.run(
-                f"micromamba run -n {self.envname} python -c \"from snakemake_interface_{self.plugin_type}_plugins.registry import {registry}; plugin = {registry}().get_plugin('{plugin_name}'); {statement}\"",
-                shell=True,
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
+            res = self._run(["pixi", "run", "extract-info", statement])
         except subprocess.CalledProcessError as e:
             raise MetadataError(f"Not a valid plugin: {e.stderr.decode()}") from e
         return res.stdout.decode()
