@@ -64,7 +64,9 @@ class MetadataCollector:
     def registry(self):
         return f"{self.plugin_type.title()}PluginRegistry"
 
-    def _run(self, cmd: List[str], stdout=subprocess.PIPE, stderr=subprocess.STDOUT) -> subprocess.CompletedProcess:
+    def _run(
+        self, cmd: List[str], stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+    ) -> subprocess.CompletedProcess:
         assert self.tempdir is not None
         return subprocess.run(
             cmd,
@@ -124,7 +126,9 @@ class MetadataCollector:
 
     def extract_info(self, statement: str) -> str:
         try:
-            res = self._run(["pixi", "run", "extract-info", statement], stderr=subprocess.PIPE)
+            res = self._run(
+                ["pixi", "run", "extract-info", statement], stderr=subprocess.PIPE
+            )
         except subprocess.CalledProcessError as e:
             raise MetadataError(f"Not a valid plugin: {e.stderr.decode()}") from e
         return res.stdout.decode()
