@@ -12,8 +12,8 @@ qc = "ruff format --check && ruff check"
 apply-qc = "ruff format && ruff check --fix"
 
 [dependencies]
-sphinx = ">=8.3.0,<9"
-python = "3.11.*"
+sphinx = ">=8.2.3,<9"
+python = ">=3.11.0,<4"
 ratelimit = ">=2.2.1,<3"
 m2r2 = ">=0.3.4,<0.4"
 cmake = ">=4.1.1,<5"
