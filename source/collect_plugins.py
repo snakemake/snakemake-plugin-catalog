@@ -9,6 +9,7 @@ import sys
 import tempfile
 import textwrap
 from typing import Any, Dict, List
+import git
 import uuid
 from pypi_simple import PyPISimple
 
@@ -339,26 +340,26 @@ def collect_plugins():
 SECTION_MARK_ORDER = '#*=-^"~:`_+<'
 
 
+def retrieve_plugin_markdown_files(repo_url: str, branches: [str], section: str):
+    """
+    fetch the intro.md and further.md doc files provided by plugins
+    """
+    docs_path = f"docs/{section}.md"
+    for branch in branches:
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                repo = git.Repo.clone_from(repo_url, to_path=tmpdir, bare=True)
+                docs_content = repo.git.show(f"{branch}:{docs_path}")
+            return docs_content
+        except git.GitCommandError as e:
+            print(f"Failed to get cached git source file {branch}:{docs_path}: {e}. ")
+
+
 def get_docs(repository: str | None, section: str, branches=["main", "master"]):
     if repository is None:
         return None
+    retrieved = retrieve_plugin_markdown_files(repository, branches, section)
 
-    def retrieve():
-        for branch in branches:
-            if repository.startswith("https://github.com"):
-                docs = requests.get(
-                    f"{repository}/blob/{branch}/docs/{section}.md?raw=true"
-                )
-                if docs.status_code == 200:
-                    return docs.text
-            elif repository.startswith("https://gitlab.com"):
-                docs = requests.get(
-                    f"{repository}/-/raw/{branch}/docs/{section}.md?raw=true"
-                )
-                if docs.status_code == 200:
-                    return docs.text
-
-    retrieved = retrieve()
     if retrieved is not None:
         renderer = m2r2.RestRenderer()
         renderer.hmarks = {

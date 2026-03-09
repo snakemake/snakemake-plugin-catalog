@@ -2,11 +2,11 @@ name: Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
   schedule:
     # * is a special character in YAML so you have to quote this string
-    - cron:  '50 4 * * *'
+    - cron: "50 4 * * *"
 
 defaults:
   run:
@@ -16,8 +16,8 @@ jobs:
   deploy:
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
     permissions:
-        pages: write      # to deploy to Pages
-        id-token: write   # to verify the deployment originates from an appropriate source
+      pages: write # to deploy to Pages
+      id-token: write # to verify the deployment originates from an appropriate source
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -25,22 +25,22 @@ jobs:
     # Specify runner + deployment step
     runs-on: ubuntu-latest
     steps:
-        - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-        - uses: prefix-dev/setup-pixi@v0.9.0
-          with:
-            cache: true
+      - uses: prefix-dev/setup-pixi@v0.9.0
+        with:
+          cache: true
 
-        - name: Building
-          run: pixi run build
+      - name: Building
+        run: pixi run build
 
-        - name: Setup Pages
-          uses: actions/configure-pages@v5
-        - name: Upload artifact
-          uses: actions/upload-pages-artifact@v3
-          with:
-            path: "build"
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "build"
 
-        - name: Deploy artifact
-          id: deployment
-          uses: actions/deploy-pages@v4
+      - name: Deploy artifact
+        id: deployment
+        uses: actions/deploy-pages@v4
