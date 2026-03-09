@@ -345,16 +345,14 @@ def retrieve_plugin_markdown_files(repo_url: str, branches: [str], section: str)
     fetch the intro.md and further.md doc files provided by plugins
     """
     docs_path = f"docs/{section}.md"
-    tmpdir = tempfile.mkdtemp()
     for branch in branches:
         try:
-            repo = git.Repo.clone_from(repo_url, to_path=tmpdir, bare=True)
-            docs_content = repo.git.show(f"{branch}:{docs_path}")
-            shutil.rmtree(tmpdir)
+            with tempfile.TemporaryDirectory() as tmpdir:
+                repo = git.Repo.clone_from(repo_url, to_path=tmpdir, bare=True)
+                docs_content = repo.git.show(f"{branch}:{docs_path}")
             return docs_content
         except git.GitCommandError as e:
             print(f"Failed to get cached git source file {branch}:{docs_path}: {e}. ")
-            shutil.rmtree(tmpdir)
 
 
 def get_docs(repository: str | None, section: str, branches=["main", "master"]):
