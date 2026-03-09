@@ -12,6 +12,18 @@ Snakemake {% block type %}{% endblock %} plugin: {{ plugin_name }}
    :target: #
 {% endif %}
 
+{% if repository_type == "github" and repository is not none %}
+{% set repo = repository.replace("https://github.com/", "") %}
+.. image:: https://img.shields.io/github/last-commit/{{ repo }}
+   :alt: GitHub - Last commit
+   :target: {{ repository }}
+{% elif repository_type == "gitlab" and repository is not none %}
+{% set repo = repository.replace("https://gitlab.com/", "") %}
+.. image:: https://img.shields.io/gitlab/last-commit/{{ repo }}
+   :alt: GitLab - Last commit
+   :target: {{ repository }}
+{% endif %}
+
 {% for author in authors %}
 .. image:: https://img.shields.io/badge/author-{{author|replace("-","--")|urlencode}}-purple?color=%23064e3b
    :target: https://pypi.org/project/{{ package_name }}
