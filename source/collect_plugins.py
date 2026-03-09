@@ -10,8 +10,6 @@ import tempfile
 import textwrap
 from typing import Any, Dict, List
 import git
-import io
-import tempfile
 import uuid
 from pypi_simple import PyPISimple
 
@@ -341,7 +339,8 @@ def collect_plugins():
 
 SECTION_MARK_ORDER = '#*=-^"~:`_+<'
 
-def retrieve_plugin_markdown_files(repo_url: str, branches:[str], section: str):
+
+def retrieve_plugin_markdown_files(repo_url: str, branches: [str], section: str):
     """
     fetch the intro.md and further.md doc files provided by plugins
     """
@@ -356,6 +355,7 @@ def retrieve_plugin_markdown_files(repo_url: str, branches:[str], section: str):
         except git.GitCommandError as e:
             print(f"Failed to get cached git source file {branch}:{docs_path}: {e}. ")
             shutil.rmtree(tmpdir)
+
 
 def get_docs(repository: str | None, section: str, branches=["main", "master"]):
     if repository is None:
