@@ -4,38 +4,46 @@
 Snakemake {% block type %}{% endblock %} plugin: {{ plugin_name }}
 ###########################################
 
-{% if repository is not none %}
+{% if repository is not none -%}
 .. image:: https://img.shields.io/badge/repository-{{ repository_type }}-blue?color=%23022c22
    :target: {{ repository }}
-{% else %}
+{% else -%}
 .. image:: https://img.shields.io/badge/repository-unknown-blue?color=%23022c22
    :target: #
-{% endif %}
-
-{% if repository_type == "github" and repository is not none %}
-{% set repo = repository.replace("https://github.com/", "").replace(".git", "").rstrip("/") %}
+{% endif -%}
+{% if repository_type == "github" and repository is not none -%}
+{% set repo = repository.replace("https://github.com/", "").replace(".git", "").rstrip("/") -%}
 .. image:: https://img.shields.io/github/last-commit/{{ repo }}
    :alt: GitHub - Last commit
    :target: {{ repository }}
-{% elif repository_type == "gitlab" and repository is not none %}
-{% set repo = repository.replace("https://gitlab.com/", "").replace(".git", "").rstrip("/") %}
+{% elif repository_type == "gitlab" and repository is not none -%}
+{% set repo = repository.replace("https://gitlab.com/", "").replace(".git", "").rstrip("/") -%}
 .. image:: https://img.shields.io/gitlab/last-commit/{{ repo }}
    :alt: GitLab - Last commit
    :target: {{ repository }}
-{% endif %}
-
-{% for author in authors %}
+{% elif commit_info is not none -%}
+.. image:: https://img.shields.io/badge/last_commit-{{ commit_info["sha"] }}-green?color={{ commit_age_color }}
+   :alt: Last commit
+   :target: {{ commit_url }}
+.. image:: https://img.shields.io/badge/last_updated-{{ commit_date_label }}-green?color={{ commit_age_color }}
+   :alt: Last updated
+   :target: {{ commit_url }}
+{% endif -%}
+{% for author in authors -%}
 .. image:: https://img.shields.io/badge/author-{{author|replace("-","--")|urlencode}}-purple?color=%23064e3b
    :target: https://pypi.org/project/{{ package_name }}
-{% endfor %}
-
+{% endfor -%}
 .. image:: https://img.shields.io/pypi/v/{{ package_name }}?color=%23047857
    :alt: PyPI - Version
    :target: https://pypi.org/project/{{ package_name }}
-
 .. image:: https://img.shields.io/pypi/l/{{ package_name }}?color=%2310b981
    :alt: PyPI - License
    :target: https://pypi.org/project/{{ package_name }}
+{% if snakemake_version is not none %}
+.. image:: https://img.shields.io/badge/snakemake-{{ snakemake_version|replace("-", "--") }}-blue?color=%230ea5e9
+   :alt: Snakemake
+   :target: https://snakemake.readthedocs.io
+{% endif %}
 
 {% if repository is not none and not repository.startswith("https://github.com/snakemake/") %}
 .. warning::

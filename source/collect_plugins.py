@@ -1,16 +1,22 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from dataclasses import dataclass
+from datetime import datetime, timezone
+import git
+import git.exc
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
 import textwrap
-from typing import Any, Dict, List
-import git
+from typing import Any, Dict, List, Optional
 import uuid
+from packaging.specifiers import SpecifierSet
+from packaging.version import Version
 from pypi_simple import PyPISimple
 
 import requests
@@ -166,7 +172,7 @@ class PluginCollectorBase(ABC):
     def aux_info(self, metadata_collector) -> Dict[str, Any]:
         return {}
 
-    def collect_plugins(self, plugins, packages, templates):
+    def collect_plugins(self, plugins, packages, templates, snakemake_compat_index):
         """
         Collect plugins of the type of the corresponding plugin type collector class.
         Plugins are selected from the set of ALL pypi packages by matching names to the
@@ -244,15 +250,47 @@ class PluginCollectorBase(ABC):
                     repository_type = "github"
                 elif repository.startswith("https://gitlab.com"):
                     repository_type = "gitlab"
-            docs_intro = get_docs(repository, section="intro")
-            docs_further = get_docs(repository, section="further")
-            if repository is not None and docs_intro is None and docs_further is None:
-                docs_warning = (
-                    f"No documentation found in repository {repository}. The plugin should "
-                    "provide a docs/intro.md with some introductory sentences and "
-                    "optionally a docs/further.md file with details beyond the "
-                    "auto-generated usage instructions presented in this catalog."
+
+            commit_info = None
+            commit_url = repository
+            docs_intro = None
+            docs_further = None
+
+            # Fetch git info (commit + docs) in a single clone operation
+            if repository and (git_info := _get_plugin_git_info(repository)):
+                if git_info.commit:
+                    commit_info = {
+                        "sha": git_info.commit.sha,
+                        "date": git_info.commit.date,
+                    }
+                    commit_url = _commit_url(
+                        repository, repository_type, git_info.commit.sha
+                    )
+
+                # Convert docs from markdown to RST
+                docs_intro = _convert_markdown_to_rst(git_info.docs.intro, "intro")
+                docs_further = _convert_markdown_to_rst(
+                    git_info.docs.further, "further"
                 )
+
+                if docs_intro is None and docs_further is None:
+                    docs_warning = (
+                        f"No documentation found in repository {repository}. The plugin should "
+                        "provide a docs/intro.md with some introductory sentences and "
+                        "optionally a docs/further.md file with details beyond the "
+                        "auto-generated usage instructions presented in this catalog."
+                    )
+
+            commit_date_label = (
+                _commit_date_label(commit_info["date"]) if commit_info else None
+            )
+            commit_age_color = (
+                _commit_age_color(commit_info["date"]) if commit_info else None
+            )
+
+            snakemake_version = _plugin_min_snakemake(
+                meta["info"].get("requires_dist"), snakemake_compat_index
+            )
 
             settings = {}
             aux_info = {}
@@ -278,6 +316,11 @@ class PluginCollectorBase(ABC):
                 authors=authors,
                 repository=repository,
                 repository_type=repository_type,
+                commit_info=commit_info,
+                commit_url=commit_url,
+                commit_age_color=commit_age_color,
+                commit_date_label=commit_date_label,
+                snakemake_version=snakemake_version,
                 meta=meta,
                 desc=desc,
                 docs_intro=docs_intro,
@@ -331,6 +374,175 @@ class SchedulerPluginCollector(PluginCollectorBase):
         return "scheduler"
 
 
+def _commit_date_label(date_str: str) -> str:
+    """Return a shields.io-safe date label like 'March_2026' from an ISO date string."""
+    return datetime.fromisoformat(date_str.replace("Z", "+00:00")).strftime("%B_%Y")
+
+
+def _commit_url(
+    repository: str, repository_type: Optional[str], commit_sha: str
+) -> str:
+    """Construct commit URL based on repository type.
+
+    Args:
+        repository: Base repository URL
+        repository_type: Type of repository ('github', 'gitlab', or None)
+        commit_sha: Commit SHA hash
+
+    Returns:
+        Full URL to the specific commit
+    """
+    if repository_type == "github":
+        return f"{repository}/commit/{commit_sha}"
+    elif repository_type == "gitlab":
+        return f"{repository}/-/commit/{commit_sha}"
+    else:
+        return repository
+
+
+def _commit_age_color(date_str: str) -> str:
+    """Return a shields.io color hex based on how old the commit date is."""
+    dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+    now = datetime.now(timezone.utc)
+    months = (now.year - dt.year) * 12 + (now.month - dt.month)
+    if months < 6:
+        return "%2316a34a"  # green
+    elif months < 24:
+        return "%23ea580c"  # orange
+    else:
+        return "%23dc2626"  # red
+
+
+_INTERFACE_PKG_RE = re.compile(
+    r"(snakemake-interface-(?:executor|storage|report|logger|scheduler)-plugins)"
+    r"\s*\(?([^)]+)"
+)
+
+
+def _build_snakemake_compat_index() -> list[tuple]:
+    """Build compatibility index mapping Snakemake versions to interface requirements.
+
+    Returns a sorted list of (snakemake_version, interface_pkg, lower, upper) tuples
+    where lower/upper are Version objects (or None) representing the interface version range
+    that each Snakemake version requires.
+
+    Example: (Version("8.0.0"), "snakemake-interface-executor-plugins", Version("1.0"), Version("2.0"))
+    means Snakemake 8.0 requires executor interface >=1.0,<2.0
+    """
+    print("Building Snakemake compatibility index...", file=sys.stderr)
+    meta = pypi_api("https://pypi.org/pypi/snakemake/json")
+
+    # Get all non-prerelease versions >= 8.0.0
+    all_versions = sorted(
+        [
+            v
+            for v in meta["releases"]
+            if not Version(v).is_prerelease and Version(v) >= Version("8.0.0")
+        ],
+        key=Version,
+    )
+
+    # Build index by checking versions and deduplicating when requirements don't change
+    # This handles cases where interface requirements change mid-minor version
+    # (e.g., 8.10.3 has different requirements than 8.10.0)
+    entries = []
+    prev_requirements = {}  # iface_pkg -> (lower, upper)
+
+    for snakemake_ver in all_versions:
+        try:
+            ver_meta = pypi_api(f"https://pypi.org/pypi/snakemake/{snakemake_ver}/json")
+        except MetadataError:
+            continue
+
+        current_requirements = {}
+        for dep in ver_meta["info"].get("requires_dist") or []:
+            match = _INTERFACE_PKG_RE.search(dep)
+            if not match:
+                continue
+
+            iface_pkg = match.group(1)
+            spec = SpecifierSet(match.group(2).strip())
+
+            # Extract lower and upper bounds from specifier set
+            lower = upper = None
+            for s in spec:
+                v = Version(s.version)
+                if s.operator in (">=", ">"):
+                    lower = v if lower is None else max(lower, v)
+                elif s.operator in ("<", "<="):
+                    upper = v if upper is None else min(upper, v)
+
+            current_requirements[iface_pkg] = (lower, upper)
+
+        # Only add entry if requirements changed from previous version
+        if current_requirements != prev_requirements:
+            for iface_pkg, (lower, upper) in current_requirements.items():
+                entries.append((Version(snakemake_ver), iface_pkg, lower, upper))
+            prev_requirements = current_requirements
+
+    return sorted(entries, key=lambda e: e[0])
+
+
+def _plugin_min_snakemake(
+    requires_dist: list[str] | None,
+    compat_index: list[tuple],
+) -> str | None:
+    """Return the minimum Snakemake version compatible with a plugin.
+
+    A plugin is compatible with a Snakemake version if their interface version requirements overlap.
+
+    Example:
+        Plugin requires: interface >=2.5
+        Snakemake 8.1 requires: interface >=2.0,<3.0
+        Overlap: [2.5, 3.0) -> Compatible!
+
+        Plugin requires: interface >=1.5
+        Snakemake 8.1 requires: interface >=2.0,<3.0
+        No overlap: plugin allows 1.5-1.9 which Snakemake doesn't support -> Incompatible
+
+    Returns:
+        Minimum Snakemake version string like ">=8.1" or None if incompatible
+    """
+    if not requires_dist:
+        return None
+
+    # Extract plugin's interface requirement
+    plugin_iface = None
+    plugin_lower = None
+    for dep in requires_dist:
+        match = _INTERFACE_PKG_RE.search(dep)
+        if match:
+            plugin_iface = match.group(1)
+            spec = SpecifierSet(match.group(2).strip())
+            for s in spec:
+                if s.operator in (">=", ">"):
+                    v = Version(s.version)
+                    plugin_lower = v if plugin_lower is None else max(plugin_lower, v)
+            break
+
+    if plugin_lower is None or plugin_iface is None:
+        return None
+
+    # Find first Snakemake version with overlapping interface requirement
+    for snakemake_ver, iface_pkg, snakemake_lower, snakemake_upper in compat_index:
+        if iface_pkg != plugin_iface:
+            continue
+
+        # Check if [plugin_lower, ∞) overlaps with [snakemake_lower, snakemake_upper)
+        # No overlap if plugin needs older version than Snakemake provides
+        if snakemake_lower is not None and plugin_lower < snakemake_lower:
+            continue
+
+        # No overlap if plugin needs newer version than Snakemake supports
+        if snakemake_upper is not None and plugin_lower >= snakemake_upper:
+            continue
+
+        # Found compatible version
+        return f">={snakemake_ver.major}.{snakemake_ver.minor}"
+
+    return None
+
+
 def collect_plugins():
     templates = Environment(
         loader=FileSystemLoader("_templates"),
@@ -340,6 +552,7 @@ def collect_plugins():
     )
 
     plugins = defaultdict(list)
+    snakemake_compat_index = _build_snakemake_compat_index()
 
     with PyPISimple() as pypi_client:
         packages = pypi_client.get_index_page().projects
@@ -351,7 +564,9 @@ def collect_plugins():
         LoggerPluginCollector,
         SchedulerPluginCollector,
     ):
-        collector().collect_plugins(plugins, packages, templates)
+        collector().collect_plugins(
+            plugins, packages, templates, snakemake_compat_index
+        )
 
     with open("index.rst", "w") as f:
         f.write(templates.get_template("index.rst.j2").render(plugins=plugins))
@@ -360,36 +575,97 @@ def collect_plugins():
 SECTION_MARK_ORDER = '#*=-^"~:`_+<'
 
 
-def retrieve_plugin_markdown_files(repo_url: str, branches: [str], section: str):
-    """
-    fetch the intro.md and further.md doc files provided by plugins
-    """
-    docs_path = f"docs/{section}.md"
+@dataclass
+class CommitInfo:
+    """Metadata about the latest commit."""
+
+    sha: str
+    date: str
+
+
+@dataclass
+class PluginDocs:
+    """Documentation files from the plugin repository."""
+
+    intro: Optional[str]
+    further: Optional[str]
+
+
+@dataclass
+class PluginGitInfo:
+    """Git information for a plugin."""
+
+    commit: Optional[CommitInfo]
+    docs: PluginDocs
+
+
+def _get_plugin_git_info(
+    repo_url: str, branches: Optional[List[str]] = None
+) -> PluginGitInfo:
+    """Clone the plugin repo once (bare) and return docs + commit info."""
+
+    if branches is None:
+        branches = ["main", "master"]
+
     for branch in branches:
         try:
             with tempfile.TemporaryDirectory() as tmpdir:
                 repo = git.Repo.clone_from(repo_url, to_path=tmpdir, bare=True)
-                docs_content = repo.git.show(f"{branch}:{docs_path}")
-            return docs_content
-        except git.GitCommandError as e:
-            print(f"Failed to get cached git source file {branch}:{docs_path}: {e}. ")
 
+                # commit metadata
+                commit = repo.commit(branch)
+                commit_info = CommitInfo(
+                    sha=commit.hexsha[:7],
+                    date=commit.committed_datetime.isoformat(),
+                )
 
-def get_docs(repository: str | None, section: str, branches=["main", "master"]):
-    if repository is None:
-        return None
-    retrieved = retrieve_plugin_markdown_files(repository, branches, section)
+                # docs
+                def _show(section: str) -> Optional[str]:
+                    try:
+                        return repo.git.show(f"{branch}:docs/{section}.md")
+                    except git.GitCommandError:
+                        return None
 
-    if retrieved is not None:
-        renderer = m2r2.RestRenderer()
-        renderer.hmarks = {
-            i + 1: mark
-            for i, mark in enumerate(
-                SECTION_MARK_ORDER[3:]
-                if section == "further"
-                else SECTION_MARK_ORDER[2:]
+                docs = PluginDocs(intro=_show("intro"), further=_show("further"))
+                return PluginGitInfo(commit=commit_info, docs=docs)
+        except git.exc.BadName:
+            print(
+                f"Warning: Branch '{branch}' not found in {repo_url}, trying next branch...",
+                file=sys.stderr,
             )
-        }
-        return m2r2.convert(retrieved, renderer=renderer)
-    else:
+            continue
+        except git.GitCommandError as e:
+            # Clone failures or other git errors
+            print(
+                f"Git error accessing {repo_url} on branch '{branch}': {e}",
+                file=sys.stderr,
+            )
+            continue
+
+    return PluginGitInfo(commit=None, docs=PluginDocs(intro=None, further=None))
+
+
+def _convert_markdown_to_rst(
+    markdown_content: Optional[str], section: str
+) -> Optional[str]:
+    """
+    Convert markdown documentation to RST format.
+
+    Args:
+        markdown_content: Markdown content to convert
+        section: Documentation section ('intro' or 'further') to determine heading marks
+
+    Returns:
+        Converted RST documentation or None if input is None
+    """
+    if markdown_content is None:
         return None
+
+    renderer = m2r2.RestRenderer()
+    renderer.hmarks = {
+        i + 1: mark
+        for i, mark in enumerate(
+            SECTION_MARK_ORDER[3:] if section == "further" else SECTION_MARK_ORDER[2:]
+        )
+    }
+    return m2r2.convert(markdown_content, renderer=renderer)
