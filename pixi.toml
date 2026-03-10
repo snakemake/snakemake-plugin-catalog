@@ -9,9 +9,11 @@ version = "0.1.0"
 build = "sphinx-build source build"
 build-single = { cmd = "sphinx-build source build", env = { TEST_PACKAGES = "snakemake-executor-plugin-cluster-generic" }}
 qc = "ruff format --check && ruff check"
-apply-qc = "ruff format && ruff check --fix"
 
-style = { cmd = "fd . --type file --extension md --exec mdformat --wrap 80", default-environment = "style" }
+_style-python = "ruff format && ruff check --fix"
+_style-md = { cmd = "fd . --type file --extension md --exec mdformat --wrap 80", default-environment = "style" }
+style = { depends-on = ["_style-md", "_style-python"] }
+apply-qc = "style"
 
 [dependencies]
 sphinx = ">=8.2.3,<9"
