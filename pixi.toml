@@ -46,10 +46,11 @@ _lint-md = """
              --check
            """
 _lint-python = "ruff format --check && ruff check"
+_lint-toml = "tombi format --check ./"
 
 style = { depends-on = ["_style-md", "_style-python", "_style-toml"] }
 
-lint = { depends-on = ["_lint-md", "_lint-python"] }
+lint = { depends-on = ["_lint-md", "_lint-python", "_lint-toml"] }
 
 [environments]
 style = { features = ["style"], no-default-feature = true }
