@@ -38,11 +38,18 @@ _style-python = "ruff format && ruff check --fix"
 _style-md = "fd . --type file --extension md --exec mdformat --wrap 80"
 _style-toml = "tombi format ./"
 
+_lint-md = """
+           fd . \
+             --type file \
+             --extension md \
+             --exec mdformat --wrap 80 \
+             --check
+           """
 _lint-python = "ruff format --check && ruff check"
 
 style = { depends-on = ["_style-md", "_style-python", "_style-toml"] }
 
-lint = { depends-on = ["_lint-python"] }
+lint = { depends-on = ["_lint-md", "_lint-python"] }
 
 [environments]
 style = { features = ["style"], no-default-feature = true }
