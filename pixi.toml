@@ -11,6 +11,8 @@ build-single = { cmd = "sphinx-build source build", env = { TEST_PACKAGES = "sna
 qc = "ruff format --check && ruff check"
 apply-qc = "ruff format && ruff check --fix"
 
+style = { cmd = "fd . --type file --extension md --exec mdformat --wrap 80", default-environment = "style" }
+
 [dependencies]
 sphinx = ">=8.2.3,<9"
 python = ">=3.11.0,<4"
@@ -26,3 +28,11 @@ git = ">=2.53.0,<3"
 [pypi-dependencies]
 sphinxawesome-theme = ">=5.3.2, <6"
 pypi-simple = ">=1.7.0, <2"
+
+[feature.style.dependencies]
+mdformat = ">=0.7.22,<0.8"
+mdformat-gfm = "*"
+fd-find = ">=10.3.0,<11"
+
+[environments]
+style = { features = ["style"], no-default-feature = true }
