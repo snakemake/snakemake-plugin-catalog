@@ -9,7 +9,7 @@ version = "0.1.0"
 build = "sphinx-build source build"
 build-single = { cmd = "sphinx-build source build", env = { TEST_PACKAGES = "snakemake-executor-plugin-cluster-generic" } }
 apply-qc = [{ task = "style", environment = "style" }]
-qc = { cmd = "ruff format --check && ruff check", default-environment = "style" }
+qc = [{ task = "lint", environment = "style" }]
 
 [dependencies]
 sphinx = ">=8.2.3,<9"
@@ -38,7 +38,11 @@ _style-python = "ruff format && ruff check --fix"
 _style-md = "fd . --type file --extension md --exec mdformat --wrap 80"
 _style-toml = "tombi format ./"
 
+_lint-python = "ruff format --check && ruff check"
+
 style = { depends-on = ["_style-md", "_style-python", "_style-toml"] }
+
+lint = { depends-on = ["_lint-python"] }
 
 [environments]
 style = { features = ["style"], no-default-feature = true }
