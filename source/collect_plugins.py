@@ -50,6 +50,11 @@ class MetadataError(Exception):
 
 
 class MetadataCollector:
+    """
+    Collect metadata on a plugin `package` of a specific `plugin_type` by installing it
+    in a temporary working directory specific to each class instance.
+    """
+
     def __init__(self, package: str, plugin_type: str, version: str):
         self.envname = uuid.uuid4().hex
         self.package = package
