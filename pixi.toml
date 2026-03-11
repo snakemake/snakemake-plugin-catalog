@@ -7,14 +7,17 @@ version = "0.1.0"
 
 [tasks]
 build = "sphinx-build source build"
-build-single = { cmd = """
-                       export TEST_PACKAGES={{ packages }} && \
-                       sphinx-build source build
-                       """, args = [
-  { "arg" = "packages", "default" = "snakemake-executor-plugin-cluster-generic" }
-] }
 apply-qc = [{ task = "style", environment = "style" }]
 qc = [{ task = "lint", environment = "style" }]
+
+[tasks.build-single]
+cmd = """
+export TEST_PACKAGES="{{ packages }}" && \
+sphinx-build source build
+"""
+args = [
+  { "arg" = "packages", "default" = "snakemake-executor-plugin-cluster-generic" }
+]
 
 [dependencies]
 sphinx = ">=8.2.3,<9"
