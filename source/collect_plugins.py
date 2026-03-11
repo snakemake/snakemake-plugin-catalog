@@ -98,6 +98,10 @@ class MetadataCollector:
         )
 
         def pixi_add(args=None):
+            """
+            Add the package for which metadata is to be parsed to the temporary
+            workspace.
+            """
             args = args or []
             self._run(["pixi", "add", f"{self.package}=={self.version}"] + args)
 
