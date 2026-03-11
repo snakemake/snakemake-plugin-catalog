@@ -11,6 +11,7 @@ apply-qc = [{ task = "style", environment = "style" }]
 qc = [{ task = "lint", environment = "style" }]
 
 [tasks.build-single]
+description = "Build docs for individual plugins. Separate `package`s with ',' to specify multiple plugins."
 cmd = """
 export TEST_PACKAGES="{{ packages }}" && \
 sphinx-build source build
