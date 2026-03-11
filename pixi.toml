@@ -7,9 +7,9 @@ version = "0.1.0"
 
 [tasks]
 build = "sphinx-build source build"
-build-single = { cmd = "sphinx-build source build", env = { TEST_PACKAGES = "snakemake-executor-plugin-cluster-generic" }}
-qc = "ruff format --check && ruff check"
-apply-qc = "ruff format && ruff check --fix"
+build-single = { cmd = "sphinx-build source build", env = { TEST_PACKAGES = "snakemake-executor-plugin-cluster-generic" } }
+apply-qc = [{ task = "style", environment = "style" }]
+qc = [{ task = "lint", environment = "style" }]
 
 [dependencies]
 sphinx = ">=8.2.3,<9"
@@ -19,10 +19,38 @@ m2r2 = ">=0.3.4,<0.4"
 cmake = ">=4.1.1,<5"
 gcc_linux-64 = ">=15.1.0,<16"
 pkgconfig = ">=1.5.5,<2"
-ruff = ">=0.12.11,<0.13"
 gitpython = ">=3.1.46,<4"
 git = ">=2.53.0,<3"
 
 [pypi-dependencies]
 sphinxawesome-theme = ">=5.3.2, <6"
 pypi-simple = ">=1.7.0, <2"
+
+[feature.style.dependencies]
+mdformat = ">=0.7.22,<0.8"
+mdformat-gfm = "*"
+fd-find = ">=10.3.0,<11"
+ruff = ">=0.12.11,<0.13"
+tombi = ">=0.9.4,<0.10"
+
+[feature.style.tasks]
+_style-python = "ruff format && ruff check --fix"
+_style-md = "fd . --type file --extension md --exec mdformat --wrap 80"
+_style-toml = "tombi format ./"
+
+_lint-md = """
+           fd . \
+             --type file \
+             --extension md \
+             --exec mdformat --wrap 80 \
+             --check
+           """
+_lint-python = "ruff format --check && ruff check"
+_lint-toml = "tombi format --check ./"
+
+style = { depends-on = ["_style-md", "_style-python", "_style-toml"] }
+
+lint = { depends-on = ["_lint-md", "_lint-python", "_lint-toml"] }
+
+[environments]
+style = { features = ["style"], no-default-feature = true }
