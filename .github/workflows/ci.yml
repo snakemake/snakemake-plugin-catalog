@@ -31,7 +31,7 @@ jobs:
           cache: true
 
       - name: Building
-        run: pixi run build-single
+        run: pixi run build-specific
 
   test:
     runs-on: ubuntu-latest
