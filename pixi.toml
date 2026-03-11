@@ -17,7 +17,7 @@ export TEST_PACKAGES="{{ packages }}" && \
 sphinx-build source build
 """
 args = [
-  { "arg" = "packages", "default" = "snakemake-executor-plugin-cluster-generic" }
+  { "arg" = "packages", "default" = "snakemake-executor-plugin-cluster-generic,snakemake-executor-plugin-slurm" }
 ]
 
 [dependencies]
