@@ -154,6 +154,13 @@ class PluginCollectorBase(ABC):
         return {}
 
     def collect_plugins(self, plugins, packages, templates):
+        """
+        Collect plugins of the type of the corresponding plugin type collector class.
+        Plugins are selected from the set of ALL pypi packages by matching names to the
+        expected prefix of 'snakemake-{plugin_type}-plugin-'. For each matching package
+        metadata is then extracted, the provided `templates` are rendered using this
+        information, and the plugin name is appended to `plugins`.
+        """
         plugin_type = self.plugin_type()
         plugin_dir = Path("plugins") / plugin_type
         if plugin_dir.exists():
