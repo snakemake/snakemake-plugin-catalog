@@ -20,7 +20,11 @@ import m2r2
 
 
 TEST_PACKAGES = (
-    os.environ.get("TEST_PACKAGES").split(",")
+    [
+        package.strip()
+        for package in os.environ.get("TEST_PACKAGES").split(",")
+        if package.strip()
+    ]
     if "TEST_PACKAGES" in os.environ
     else None
 )
@@ -50,6 +54,11 @@ class MetadataError(Exception):
 
 
 class MetadataCollector:
+    """
+    Collect metadata on a plugin `package` of a specific `plugin_type` by installing it
+    in a temporary working directory specific to each class instance.
+    """
+
     def __init__(self, package: str, plugin_type: str, version: str):
         self.envname = uuid.uuid4().hex
         self.package = package
@@ -93,6 +102,10 @@ class MetadataCollector:
         )
 
         def pixi_add(args=None):
+            """
+            Add the package for which metadata is to be parsed to the temporary
+            workspace.
+            """
             args = args or []
             self._run(["pixi", "add", f"{self.package}=={self.version}"] + args)
 
@@ -154,6 +167,13 @@ class PluginCollectorBase(ABC):
         return {}
 
     def collect_plugins(self, plugins, packages, templates):
+        """
+        Collect plugins of the type of the corresponding plugin type collector class.
+        Plugins are selected from the set of ALL pypi packages by matching names to the
+        expected prefix of 'snakemake-{plugin_type}-plugin-'. For each matching package
+        metadata is then extracted, the provided `templates` are rendered using this
+        information, and the plugin name is appended to `plugins`.
+        """
         plugin_type = self.plugin_type()
         plugin_dir = Path("plugins") / plugin_type
         if plugin_dir.exists():

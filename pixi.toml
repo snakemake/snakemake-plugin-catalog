@@ -7,9 +7,18 @@ version = "0.1.0"
 
 [tasks]
 build = "sphinx-build source build"
-build-single = { cmd = "sphinx-build source build", env = { TEST_PACKAGES = "snakemake-executor-plugin-cluster-generic" } }
 apply-qc = [{ task = "style", environment = "style" }]
 qc = [{ task = "lint", environment = "style" }]
+
+[tasks.build-specific]
+description = "Build docs for individual plugins. Separate `package`s with ',' to specify multiple plugins."
+cmd = """
+export TEST_PACKAGES="{{ packages }}" && \
+sphinx-build source build
+"""
+args = [
+  { "arg" = "packages", "default" = "snakemake-executor-plugin-cluster-generic,snakemake-executor-plugin-slurm" }
+]
 
 [dependencies]
 sphinx = ">=8.2.3,<9"
