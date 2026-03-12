@@ -20,7 +20,11 @@ import m2r2
 
 
 TEST_PACKAGES = (
-    os.environ.get("TEST_PACKAGES").split(",")
+    [
+        package.strip()
+        for package in os.environ.get("TEST_PACKAGES").split(",")
+        if package.strip()
+    ]
     if "TEST_PACKAGES" in os.environ
     else None
 )
