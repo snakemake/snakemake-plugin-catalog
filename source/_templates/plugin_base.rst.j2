@@ -12,13 +12,11 @@ Snakemake {% block type %}{% endblock %} plugin: {{ plugin_name }}
    :target: #
 {% endif -%}
 {% if repository_type == "github" and repository is not none -%}
-{% set repo = repository.replace("https://github.com/", "").replace(".git", "").rstrip("/") -%}
-.. image:: https://img.shields.io/github/last-commit/{{ repo }}
+.. image:: https://img.shields.io/github/last-commit/{{ repo_shortname }}
    :alt: GitHub - Last commit
    :target: {{ repository }}
 {% elif repository_type == "gitlab" and repository is not none -%}
-{% set repo = repository.replace("https://gitlab.com/", "").replace(".git", "").rstrip("/") -%}
-.. image:: https://img.shields.io/gitlab/last-commit/{{ repo }}
+.. image:: https://img.shields.io/gitlab/last-commit/{{ repo_shortname }}
    :alt: GitLab - Last commit
    :target: {{ repository }}
 {% elif commit_info is not none -%}

@@ -237,6 +237,10 @@ class PluginCollectorBase(ABC):
             repository = project_urls.get("Repository") or project_urls.get(
                 "repository"
             )
+            # Clean up repository URL early - remove .git suffix and trailing slashes
+            if repository:
+                repository = repository.replace(".git", "").rstrip("/")
+
             repository_type = None
             if repository is None:
                 docs_warning = (
@@ -310,11 +314,15 @@ class PluginCollectorBase(ABC):
                 else:
                     error += "\n\nPlease contact the plugin authors."
 
+            # Get repository shortname for shields.io badges
+            repo_shortname = get_repo_shortname(repository) if repository else None
+
             rendered = templates.get_template(f"{plugin_type}_plugin.rst.j2").render(
                 plugin_name=plugin_name,
                 package_name=package,
                 authors=authors,
                 repository=repository,
+                repo_shortname=repo_shortname,
                 repository_type=repository_type,
                 commit_info=commit_info,
                 commit_url=commit_url,
@@ -398,6 +406,32 @@ def _commit_url(
         return f"{repository}/-/commit/{commit_sha}"
     else:
         return repository
+
+
+def get_repo_shortname(repository: Optional[str]) -> str:
+    """Extract the shortname from repository URL for shields.io badges.
+
+    Removes protocol and known forge prefix (https://github.com/ or https://gitlab.com/),
+    returning just the user/repo path.
+
+    Args:
+        repository: Full repository URL (e.g., https://github.com/user/repo)
+
+    Returns:
+        Repository shortname (e.g., user/repo)
+    """
+    if not repository:
+        return ""
+
+    # Remove protocol and domain prefixes
+    cleaned = (
+        repository.replace("https://github.com/", "")
+        .replace("https://gitlab.com/", "")
+        .replace("http://github.com/", "")
+        .replace("http://gitlab.com/", "")
+    )
+
+    return cleaned
 
 
 def _commit_age_color(date_str: str) -> str:

@@ -6,6 +6,7 @@ from collect_plugins import (
     _convert_markdown_to_rst,
     _plugin_min_snakemake,
     _commit_url,
+    get_repo_shortname,
 )
 
 
@@ -253,3 +254,42 @@ def test_commit_url_unknown_type_non_none():
     """Test unknown repository type string returns base URL."""
     url = _commit_url("https://bitbucket.org/user/repo", "bitbucket", "abc1234")
     assert url == "https://bitbucket.org/user/repo"
+
+
+# Repository shortname extraction tests
+
+
+def test_get_repo_shortname_github_https():
+    """Test extracting shortname from GitHub HTTPS URL."""
+    shortname = get_repo_shortname("https://github.com/user/repo")
+    assert shortname == "user/repo"
+
+
+def test_get_repo_shortname_gitlab_https():
+    """Test extracting shortname from GitLab HTTPS URL."""
+    shortname = get_repo_shortname("https://gitlab.com/user/repo")
+    assert shortname == "user/repo"
+
+
+def test_get_repo_shortname_http_protocol():
+    """Test extracting shortname from HTTP protocol URL."""
+    shortname = get_repo_shortname("http://github.com/user/repo")
+    assert shortname == "user/repo"
+
+
+def test_get_repo_shortname_empty_string():
+    """Test extracting shortname from empty string."""
+    shortname = get_repo_shortname("")
+    assert shortname == ""
+
+
+def test_get_repo_shortname_none():
+    """Test extracting shortname from None value."""
+    shortname = get_repo_shortname(None)
+    assert shortname == ""
+
+
+def test_get_repo_shortname_other_domain():
+    """Test URL from other domain remains unchanged."""
+    shortname = get_repo_shortname("https://bitbucket.org/user/repo")
+    assert shortname == "https://bitbucket.org/user/repo"
