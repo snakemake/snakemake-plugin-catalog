@@ -21,8 +21,21 @@ jobs:
       - name: QC
         run: pixi run qc
 
+  test-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: prefix-dev/setup-pixi@v0.9.0
+        with:
+          cache: true
+
+      - name: Unit Tests
+        run: pixi run test-unit
+
   test-fast:
     runs-on: ubuntu-latest
+    needs: test-unit
     steps:
       - uses: actions/checkout@v4
 

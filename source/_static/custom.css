@@ -1,9 +1,11 @@
 .image-reference img {
     display: inline;
+    margin-right: 4px;
 }
 
 .image-reference {
     border-bottom: none !important;
+    font-size: 0;
 }
 
 table code.literal {

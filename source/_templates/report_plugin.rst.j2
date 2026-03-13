@@ -3,7 +3,7 @@
 {% block type %}report{% endblock %}
 
 {% block usage %}
-In order to use the plugin, run Snakemake (>=8.5) with the corresponding value for the reporter flag::
+In order to use the plugin, run Snakemake ({{ snakemake_version if snakemake_version else ">=8.5" }}) with the corresponding value for the reporter flag::
 
     snakemake --reporter {{ plugin_name }} ...
 

@@ -3,7 +3,7 @@
 {% block type %}executor{% endblock %}
 
 {% block usage %}
-In order to use the plugin, run Snakemake (>=8.0) in the folder where your workflow code and config resides (containing either ``workflow/Snakefile`` or ``Snakefile``) with the corresponding value for the executor flag::
+In order to use the plugin, run Snakemake ({{ snakemake_version if snakemake_version else ">=8.0" }}) in the folder where your workflow code and config resides (containing either ``workflow/Snakefile`` or ``Snakefile``) with the corresponding value for the executor flag::
 
     snakemake --executor {{ plugin_name }} --default-resources --jobs N ...
 

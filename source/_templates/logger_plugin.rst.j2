@@ -3,7 +3,7 @@
 {% block type %}logger{% endblock %}
 
 {% block usage %}
-In order to use the plugin, run Snakemake (>=9.0) with the corresponding value for the logger flag::
+In order to use the plugin, run Snakemake ({{ snakemake_version if snakemake_version else ">=9.0" }}) with the corresponding value for the logger flag::
 
     snakemake --logger {{ plugin_name }} ...
 
