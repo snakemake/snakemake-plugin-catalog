@@ -44,3 +44,4 @@ html_theme_options = {
 html_title = "Snakemake plugin catalog"
 html_css_files = ["custom.css"]
 html_permalinks_icon = Icons.permalinks_icon
+html_favicon = "_static/logo-snake.svg"

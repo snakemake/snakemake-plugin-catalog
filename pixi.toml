@@ -32,6 +32,7 @@ pkgconfig = ">=1.5.5,<2"
 gitpython = ">=3.1.46,<4"
 git = ">=2.53.0,<3"
 pytest = ">=8.0.0,<9"
+pandas = ">=2.2,<3"
 
 [pypi-dependencies]
 sphinxawesome-theme = ">=5.3.2, <6"
