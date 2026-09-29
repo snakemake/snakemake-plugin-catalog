@@ -9,7 +9,9 @@ import sys
 import tempfile
 import textwrap
 from typing import Any, Dict, List
+from urllib.parse import urlparse
 import uuid
+from github import Github, GithubException
 from pypi_simple import PyPISimple
 
 import requests
@@ -48,6 +50,88 @@ class MetadataError(Exception):
         )
 
 
+class RepoHandler:
+    def __init__(self, repository: str, package: str) -> None:
+        self.repository = repository
+        self.package = package
+        parsed = urlparse(repository)
+        if parsed.hostname != "github.com":
+            print(
+                f"Skipping GitHub issue creation because the repository URL is not on GitHub ({repository}).",
+                file=sys.stderr,
+            )
+            self.github_repo = None
+        else:
+            parts = [part for part in parsed.path.split("/") if part]
+            owner = parts[0] if len(parts) > 0 else None
+            repo = parts[1] if len(parts) > 1 else None
+            if repo and repo.endswith(".git"):
+                repo = repo[:-4]
+
+            token = os.environ.get("PLUGIN_ISSUE_TOKEN")
+            if not token:
+                print(
+                    "Skipping GitHub issue creation because PLUGIN_ISSUE_TOKEN is not set.",
+                    file=sys.stderr,
+                )
+                self.github_repo = None
+            elif owner and repo:
+                self.github_repo = Github(token).get_repo(f"{owner}/{repo}")
+            else:
+                print(
+                    f"Skipping GitHub issue creation because the repository URL is invalid ({repository}).",
+                    file=sys.stderr,
+                )
+                self.github_repo = None
+
+    def _issue_title(self, issue_kind):
+        return f"[snakemake-plugin-catalog] {issue_kind}: {self.package}"
+
+    def _get_issue(self, title: str):
+        for issue in self.github_repo.get_issues(state="open"):
+            if issue.title == title and issue.pull_request is None:
+                return issue
+        return None
+
+    def create_issue(self, issue_kind, body, plugin_page_url):
+        if not self.github_repo:
+            return None
+
+        title = self._issue_title(issue_kind)
+        body = (
+            "This issue was created automatically by the "
+            "[Snakemake plugin catalog](https://snakemake.github.io/snakemake-plugin-catalog) "
+            f"for the [{self.package} plugin page]({plugin_page_url}).\n\n{body}"
+        )
+        try:
+            issue = self._get_issue(title)
+            if issue is not None:
+                if issue.body != body:
+                    issue.edit(body=body)
+                return issue.html_url
+
+            issue = self.github_repo.create_issue(title=title, body=body)
+            return issue.html_url
+        except GithubException as e:
+            print(f"Could not create GitHub issue for {self.package}: {e}", file=sys.stderr)
+            return None
+
+    def close_issue(self, issue_kind):
+        if not self.github_repo:
+            return None
+
+        title = self._issue_title(issue_kind)
+        try:
+            issue = self._get_issue(title)
+            if issue is not None:
+                issue.edit(state="closed")
+                return issue.html_url
+            return None
+        except GithubException as e:
+            print(f"Could not close GitHub issue for {self.package}: {e}", file=sys.stderr)
+            return None
+
+
 class MetadataCollector:
     def __init__(self, package: str, plugin_type: str, version: str):
         self.envname = uuid.uuid4().hex
@@ -64,7 +148,9 @@ class MetadataCollector:
     def registry(self):
         return f"{self.plugin_type.title()}PluginRegistry"
 
-    def _run(self, cmd: List[str], stdout=subprocess.PIPE, stderr=subprocess.STDOUT) -> subprocess.CompletedProcess:
+    def _run(
+        self, cmd: List[str], stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+    ) -> subprocess.CompletedProcess:
         assert self.tempdir is not None
         return subprocess.run(
             cmd,
@@ -124,7 +210,9 @@ class MetadataCollector:
 
     def extract_info(self, statement: str) -> str:
         try:
-            res = self._run(["pixi", "run", "extract-info", statement], stderr=subprocess.PIPE)
+            res = self._run(
+                ["pixi", "run", "extract-info", statement], stderr=subprocess.PIPE
+            )
         except subprocess.CalledProcessError as e:
             raise MetadataError(f"Not a valid plugin: {e.stderr.decode()}") from e
         return res.stdout.decode()
@@ -170,105 +258,138 @@ class PluginCollectorBase(ABC):
                     file=sys.stderr,
                 )
                 continue
-            plugin_name = package.removeprefix(prefix)
-            desc = "\n".join(meta["info"]["description"].split("\n")[2:])
-            version = meta["info"]["version"]
-
-            # convert to rst
-            desc = m2r2.convert(desc)
-
-            error = None
-            repository = None
-
-            def get_setting_meta(setting, key, default="", verb=False):
-                value = setting.get(key, default)
-                if verb:
-                    return f"``{repr(value)}``"
-                elif isinstance(value, list):
-                    return ", ".join(value)
-                elif isinstance(value, bool):
-                    return "✓" if value else "✗"
-                elif value is None:
-                    return default
-                return value
-
-            docs_warning = ""
-            info = meta.get("info") or dict()
-            project_urls = info.get("project_urls") or dict()
-
-            author_info = info.get("author") or info.get("author_email")
-            authors = (
-                [author.strip() for author in author_info.split(",")]
-                if author_info
-                else []
+            self._collect_plugin(
+                package, meta, plugin_type, plugin_dir, templates, plugins
             )
 
-            repository = project_urls.get("Repository") or project_urls.get(
-                "repository"
+    def _collect_plugin(
+        self, package, meta, plugin_type, plugin_dir, templates, plugins
+    ):
+        prefix = f"snakemake-{plugin_type}-plugin-"
+        plugin_name = package.removeprefix(prefix)
+        plugin_page_url = (
+            "https://snakemake.github.io/snakemake-plugin-catalog/"
+            f"plugins/{plugin_type}/{plugin_name}.html"
+        )
+        desc = "\n".join(meta["info"]["description"].split("\n")[2:])
+        version = meta["info"]["version"]
+
+        # convert to rst
+        desc = m2r2.convert(desc)
+
+        error = None
+        repository = None
+
+        def get_setting_meta(setting, key, default="", verb=False):
+            value = setting.get(key, default)
+            if verb:
+                return f"``{repr(value)}``"
+            elif isinstance(value, list):
+                return ", ".join(value)
+            elif isinstance(value, bool):
+                return "✓" if value else "✗"
+            elif value is None:
+                return default
+            return value
+
+        docs_warning = ""
+        info = meta.get("info") or dict()
+        project_urls = info.get("project_urls") or dict()
+
+        author_info = info.get("author") or info.get("author_email")
+        authors = (
+            [author.strip() for author in author_info.split(",")] if author_info else []
+        )
+
+        repository = project_urls.get("Repository") or project_urls.get("repository")
+        repository_type = None
+        if repository is None:
+            docs_warning = (
+                "No repository URL found in Pypi metadata. The plugin should "
+                "specify a repository URL in its pyproject.toml (key 'repository'). "
+                "It is unclear whether the plugin is maintained and reviewed by "
+                "the official Snakemake organization (https://github.com/snakemake)."
             )
-            repository_type = None
-            if repository is None:
-                docs_warning = (
-                    "No repository URL found in Pypi metadata. The plugin should "
-                    "specify a repository URL in its pyproject.toml (key 'repository'). "
-                    "It is unclear whether the plugin is maintained and reviewed by "
-                    "the official Snakemake organization (https://github.com/snakemake)."
-                )
-            else:
-                if repository.startswith("https://github.com"):
-                    repository_type = "github"
-                elif repository.startswith("https://gitlab.com"):
-                    repository_type = "gitlab"
-            docs_intro = get_docs(repository, section="intro")
-            docs_further = get_docs(repository, section="further")
-            if repository is not None and docs_intro is None and docs_further is None:
-                docs_warning = (
-                    f"No documentation found in repository {repository}. The plugin should "
-                    "provide a docs/intro.md with some introductory sentences and "
-                    "optionally a docs/further.md file with details beyond the "
-                    "auto-generated usage instructions presented in this catalog."
-                )
+        else:
+            if repository.startswith("https://github.com"):
+                repository_type = "github"
+            elif repository.startswith("https://gitlab.com"):
+                repository_type = "gitlab"
+        docs_intro = get_docs(repository, section="intro")
+        docs_further = get_docs(repository, section="further")
+        if repository is not None and docs_intro is None and docs_further is None:
+            docs_warning = (
+                f"No documentation found in repository {repository}. The plugin should "
+                "provide a docs/intro.md with some introductory sentences and "
+                "optionally a docs/further.md file with details beyond the "
+                "auto-generated usage instructions presented in this catalog."
+            )
 
-            settings = {}
-            aux_info = {}
+        settings = {}
+        aux_info = {}
 
-            try:
-                with MetadataCollector(package, plugin_type, version) as collector:
-                    settings = collector.get_settings()
-                    aux_info = self.aux_info(collector)
-            except MetadataError as e:
-                error = str(e)
-                e.log(package)
-                # go on, just with error registered for display
+        try:
+            with MetadataCollector(package, plugin_type, version) as collector:
+                settings = collector.get_settings()
+                aux_info = self.aux_info(collector)
+        except MetadataError as e:
+            error = str(e)
+            e.log(package)
+            # go on, just with error registered for display
 
-            if error is not None:
+        def extend_msg(msg, issue_url, repository):
+            if issue_url is None:
                 if repository is not None:
-                    error += f"\n\nPlease file a corresponding issue in the plugin's `repository <{repository}>`__ (if there is none yet)."
+                    return msg + f"\n\nPlease file a corresponding issue in the plugin's `repository <{repository}>`__ (if there is none yet)."
                 else:
-                    error += "\n\nPlease contact the plugin authors."
+                    return msg + "\n\nPlease contact the plugin authors."
+            else:
+                return msg + f"\n\nSee the corresponding `GitHub issue <{issue_url}>`__."
 
-            rendered = templates.get_template(f"{plugin_type}_plugin.rst.j2").render(
-                plugin_name=plugin_name,
-                package_name=package,
-                authors=authors,
-                repository=repository,
-                repository_type=repository_type,
-                meta=meta,
-                desc=desc,
-                docs_intro=docs_intro,
-                docs_further=docs_further,
-                docs_warning=docs_warning,
-                plugin_type=plugin_type,
-                settings=settings,
-                get_setting_meta=get_setting_meta,
-                error=error,
-                textwrap=textwrap,
-                **aux_info,
+        repo_handler = RepoHandler(repository, package)
+
+        if error is not None:
+            error_issue_url = repo_handler.create_issue(
+                "Processing error",
+                error,
+                plugin_page_url,
             )
-            with open((plugin_dir / plugin_name).with_suffix(".rst"), "w") as f:
-                f.write(rendered)
+            error = extend_msg(error, error_issue_url, repository)
 
-            plugins[plugin_type].append(plugin_name)
+        if docs_warning:
+            docs_issue_url = repo_handler.create_issue(
+                "Missing documentation",
+                docs_warning,
+                plugin_page_url,
+            )
+            docs_warning = extend_msg(docs_warning, docs_issue_url, repository)
+
+        if not error and not docs_warning:
+            repo_handler.close_issue("Processing error")
+            repo_handler.close_issue("Missing documentation")
+
+        rendered = templates.get_template(f"{plugin_type}_plugin.rst.j2").render(
+            plugin_name=plugin_name,
+            package_name=package,
+            authors=authors,
+            repository=repository,
+            repository_type=repository_type,
+            meta=meta,
+            desc=desc,
+            docs_intro=docs_intro,
+            docs_further=docs_further,
+            docs_warning=docs_warning,
+            plugin_type=plugin_type,
+            settings=settings,
+            get_setting_meta=get_setting_meta,
+            error=error,
+            textwrap=textwrap,
+            **aux_info,
+        )
+        with open((plugin_dir / plugin_name).with_suffix(".rst"), "w") as f:
+            f.write(rendered)
+
+        plugins[plugin_type].append(plugin_name)
 
 
 class ExecutorPluginCollector(PluginCollectorBase):

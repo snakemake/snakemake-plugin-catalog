@@ -7,7 +7,7 @@ version = "0.1.0"
 
 [tasks]
 build = "sphinx-build source build"
-build-single = { cmd = "sphinx-build source build", env = { TEST_PACKAGES = "snakemake-executor-plugin-cluster-generic" }}
+build-single = { cmd = "sphinx-build source build", env = { TEST_PACKAGES = "snakemake-scheduler-plugin-firstfit" }}
 qc = "ruff format --check && ruff check"
 apply-qc = "ruff format && ruff check --fix"
 
@@ -24,3 +24,4 @@ ruff = ">=0.12.11,<0.13"
 [pypi-dependencies]
 sphinxawesome-theme = ">=5.3.2, <6"
 pypi-simple = ">=1.7.0, <2"
+pygithub = ">=2.6.1, <3"

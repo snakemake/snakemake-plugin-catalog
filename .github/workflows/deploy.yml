@@ -32,6 +32,8 @@ jobs:
             cache: true
 
         - name: Building
+          env:
+            PLUGIN_ISSUE_TOKEN: ${{ secrets.PLUGIN_ISSUE_TOKEN }}
           run: pixi run build
 
         - name: Setup Pages
