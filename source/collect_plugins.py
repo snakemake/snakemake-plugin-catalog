@@ -68,10 +68,10 @@ class RepoHandler:
             if repo and repo.endswith(".git"):
                 repo = repo[:-4]
 
-            token = os.environ.get("PLUGIN_ISSUE_TOKEN")
+            token = os.environ.get("GITHUB_TOKEN")
             if not token:
                 print(
-                    "Skipping GitHub issue creation because PLUGIN_ISSUE_TOKEN is not set.",
+                    "Skipping GitHub issue creation because GITHUB_TOKEN is not set.",
                     file=sys.stderr,
                 )
                 self.github_repo = None
